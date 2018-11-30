@@ -5,6 +5,7 @@
  * Provides functionality for the Commerce Canada Post module.
  */
 
+use Drupal\commerce_store\Entity\StoreInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormStateInterface;
 
@@ -52,6 +53,17 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
 }
 
 /**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function commerce_canadapost_form_commerce_store_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  /** @var \Drupal\commerce_store\Entity\StoreInterface $store */
+  $store = $form_state->getFormObject()->getEntity();
+  //ksm($store->get('blah'));
+
+  $form['#entity_builders'][] = 'commerce_canadapost_form_commerce_store_form_builder';
+}
+
+/**
  * Functions.
  */
 
@@ -94,4 +106,75 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
 
   $form_state->setValues($values);
   $shipment->set('tracking_code', $submitted_tracking_pin);
+}
+
+/**
+ * Entity builder for the commerce_store entity.
+ */
+function commerce_canadapost_form_commerce_store_form_builder(
+  $entity_type,
+  StoreInterface $store,
+  &$form,
+  FormStateInterface $form_state
+) {
+
+}
+
+/**
+ * Build the form fields for the Canada Post API settings.
+ *
+ * @see \Drupal\commerce_canadapost\Form::buildForm()
+ * @see \commerce_canadapost_form_alter()
+ */
+function _commerce_canadapost_build_api_form(&$form, FormStateInterface $form_state) {
+  $config = \Drupal::config('commerce_canadapost.settings');
+
+  $form['api'] = [
+    '#type' => 'details',
+    '#title' => t('API authentication'),
+    '#open' => TRUE,
+  ];
+
+  $form['api']['customer_number'] = [
+    '#type' => 'textfield',
+    '#title' => t('Customer number'),
+    '#default_value' => $config->get('api.customer_number'),
+    '#required' => TRUE,
+  ];
+  $form['api']['username'] = [
+    '#type' => 'textfield',
+    '#title' => t('Username'),
+    '#default_value' => $config->get('api.username'),
+    '#required' => TRUE,
+  ];
+  $form['api']['password'] = [
+    '#type' => 'textfield',
+    '#title' => t('Password'),
+    '#default_value' => $config->get('api.password'),
+    '#required' => TRUE,
+  ];
+  $form['api']['contract_id'] = [
+    '#type' => 'textfield',
+    '#title' => t('Contract ID'),
+    '#default_value' => $config->get('api.contract_id'),
+  ];
+  $form['api']['mode'] = [
+    '#type' => 'select',
+    '#title' => t('Mode'),
+    '#default_value' => $config->get('api.mode'),
+    '#options' => [
+      'test' => t('Test'),
+      'live' => t('Live'),
+    ],
+    '#required' => TRUE,
+  ];
+  $form['api']['log'] = [
+    '#type' => 'checkboxes',
+    '#title' => t('Log the following messages for debugging'),
+    '#options' => [
+      'request' => t('API request messages'),
+      'response' => t('API response messages'),
+    ],
+    '#default_value' => $config->get('api.log'),
+  ];
 }
