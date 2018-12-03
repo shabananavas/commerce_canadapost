@@ -1,6 +1,8 @@
 langcode: en
 status: true
 dependencies:
+  config:
+    - commerce_shipping.commerce_shipment_type.canadapost
   module:
     - commerce_shipping
     - datetime
