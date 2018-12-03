@@ -4,6 +4,7 @@ namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use CommerceGuys\Addressing\AddressInterface;
 use Drupal\commerce_canadapost\Api\RatingService;
+use Drupal\commerce_canadapost\Api\TrackingService;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
@@ -30,11 +31,18 @@ define('COMMERCE_CANADAPOST_LOGGER_CHANNEL', 'commerce_canadapost');
 abstract class CanadaPostUnitTestBase extends UnitTestCase {
 
   /**
-   * The Canada Post api service.
+   * The Canada Post api rating service.
    *
    * @var \Drupal\commerce_canadapost\Api\RatingServiceInterface
    */
   protected $ratingService;
+
+  /**
+   * The Canada Post api tracking service.
+   *
+   * @var \Drupal\commerce_canadapost\Api\TrackingServiceInterface
+   */
+  protected $trackingService;
 
   /**
    * Set up requirements for test.
@@ -58,13 +66,16 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
       ->willReturn('');
     $config_factory->get('commerce_canadapost.settings')
       ->willReturn($config->reveal());
+    $config_factory = $config_factory->reveal();
 
     $logger_factory = $this->prophesize(LoggerChannelFactoryInterface::class);
     $logger = $this->prophesize(LoggerChannelInterface::class);
     $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL)
       ->willReturn($logger->reveal());
+    $logger_factory = $logger_factory->reveal();
 
-    $this->ratingService = new RatingService($config_factory->reveal(), $logger_factory->reveal());
+    $this->ratingService = new RatingService($config_factory, $logger_factory);
+    $this->trackingService = new TrackingService($config_factory, $logger_factory);
   }
 
   /**
