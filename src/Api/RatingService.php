@@ -85,7 +85,7 @@ class RatingService implements RatingServiceInterface {
    * @return \CanadaPost\Rating
    *   The Canada Post request service object.
    */
-  public function getRequest() {
+  protected function getRequest() {
     $config = [
       'username' => $this->config->get('api.username'),
       'password' => $this->config->get('api.password'),

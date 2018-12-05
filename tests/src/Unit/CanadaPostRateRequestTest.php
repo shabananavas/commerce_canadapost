@@ -4,7 +4,6 @@ namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use CanadaPost\Exception\ClientException;
 use CanadaPost\Rating;
-use Exception;
 use Psr\Http\Message\RequestInterface;
 
 /**
@@ -19,6 +18,9 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
    * ::covers getRates.
    */
   public function testGetRatesWithPriceQuotes() {
+    // Technically, it's not good practice to mock the class we test, however,
+    // we need to mock the getRequest() function and this is the only way to do
+    // so.
     $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
       ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
       ->setMethods(['getRequest'])
@@ -48,6 +50,9 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
    * ::covers getRates.
    */
   public function testGetRatesWithoutPriceQuotes() {
+    // Technically, it's not good practice to mock the class we test, however,
+    // we need to mock the getRequest() function and this is the only way to do
+    // so.
     $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
       ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
       ->setMethods(['getRequest'])
@@ -67,6 +72,9 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
    * ::covers getRates.
    */
   public function testGetRatesWithException() {
+    // Technically, it's not good practice to mock the class we test, however,
+    // we need to mock the getRequest() function and this is the only way to do
+    // so.
     $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
       ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
       ->setMethods(['getRequest'])
