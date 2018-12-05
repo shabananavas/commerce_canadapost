@@ -3,8 +3,6 @@
 namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use CommerceGuys\Addressing\AddressInterface;
-use Drupal\commerce_canadapost\Api\RatingService;
-use Drupal\commerce_canadapost\Api\TrackingService;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
@@ -31,18 +29,32 @@ define('COMMERCE_CANADAPOST_LOGGER_CHANNEL', 'commerce_canadapost');
 abstract class CanadaPostUnitTestBase extends UnitTestCase {
 
   /**
-   * The Canada Post api rating service.
+   * The Canada Post configuration object.
    *
-   * @var \Drupal\commerce_canadapost\Api\RatingServiceInterface
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
-  protected $ratingService;
+  protected $configFactory;
 
   /**
-   * The Canada Post api tracking service.
+   * The logger channel factory.
    *
-   * @var \Drupal\commerce_canadapost\Api\TrackingServiceInterface
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
    */
-  protected $trackingService;
+  protected $loggerFactory;
+
+  /**
+   * The shipping method interface.
+   *
+   * @var \Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface
+   */
+  protected $shippingMethod;
+
+  /**
+   * The shipment interface.
+   *
+   * @var \Drupal\commerce_shipping\Entity\ShipmentInterface
+   */
+  protected $shipment;
 
   /**
    * Set up requirements for test.
@@ -53,29 +65,30 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
     $config_factory = $this->prophesize(ConfigFactoryInterface::class);
     $config = $this->prophesize(ImmutableConfig::class);
     $config->get('api.rate.origin_postal_code')
-      ->willReturn('V1X5V1');
+      ->willReturn('');
     $config->get('api.mode')
       ->willReturn('');
     $config->get('api.username')
-      ->willReturn('d94c146091e5cfd7');
+      ->willReturn('mock_name');
     $config->get('api.password')
-      ->willReturn('24df6c2756a84c483e670d');
+      ->willReturn('mock_pwd');
     $config->get('api.customer_number')
-      ->willReturn('0008792735');
+      ->willReturn('mock_cn');
     $config->get('api.contract_id')
       ->willReturn('');
     $config_factory->get('commerce_canadapost.settings')
       ->willReturn($config->reveal());
-    $config_factory = $config_factory->reveal();
 
     $logger_factory = $this->prophesize(LoggerChannelFactoryInterface::class);
     $logger = $this->prophesize(LoggerChannelInterface::class);
     $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL)
       ->willReturn($logger->reveal());
-    $logger_factory = $logger_factory->reveal();
 
-    $this->ratingService = new RatingService($config_factory, $logger_factory);
-    $this->trackingService = new TrackingService($config_factory, $logger_factory);
+    $this->configFactory = $config_factory->reveal();
+    $this->loggerFactory = $logger_factory->reveal();
+
+    $this->shippingMethod = $this->mockShippingMethod();
+    $this->shipment = $this->mockShipment();
   }
 
   /**

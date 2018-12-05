@@ -63,16 +63,8 @@ class RatingService implements RatingServiceInterface {
       ->getPostalCode();
     $weight = $shipment->getWeight()->convert('kg')->getNumber();
 
-    $config = [
-      'username' => $this->config->get('api.username'),
-      'password' => $this->config->get('api.password'),
-      'customer_number' => $this->config->get('api.customer_number'),
-      'contract_id' => $this->config->get('api.contract_id'),
-      'env' => $this->getEnvironmentMode(),
-    ];
-
     try {
-      $request = new Rating($config);
+      $request = $this->getRequest();
       $response = $request->getRates($origin_postal_code, $postal_code, $weight, $options);
     }
     catch (ClientException $exception) {
@@ -85,6 +77,24 @@ class RatingService implements RatingServiceInterface {
     }
 
     return $this->parseResponse($response);
+  }
+
+  /**
+   * Returns a Canada Post request service api.
+   *
+   * @return \CanadaPost\Rating
+   *   The Canada Post request service object.
+   */
+  protected function getRequest() {
+    $config = [
+      'username' => $this->config->get('api.username'),
+      'password' => $this->config->get('api.password'),
+      'customer_number' => $this->config->get('api.customer_number'),
+      'contract_id' => $this->config->get('api.contract_id'),
+      'env' => $this->getEnvironmentMode(),
+    ];
+
+    return new Rating($config);
   }
 
   /**
