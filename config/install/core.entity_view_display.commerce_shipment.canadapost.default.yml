@@ -5,6 +5,7 @@ dependencies:
     - commerce_shipping.commerce_shipment_type.canadapost
     - field.field.commerce_shipment.canadapost.field_actual_delivery
     - field.field.commerce_shipment.canadapost.field_attempted_delivery
+    - field.field.commerce_shipment.canadapost.field_current_location
     - field.field.commerce_shipment.canadapost.field_expected_delivery
     - field.field.commerce_shipment.canadapost.field_mailed_on
   module:
@@ -33,6 +34,13 @@ content:
       timezone_override: ''
     third_party_settings: {  }
     type: datetime_default
+    region: content
+  field_current_location:
+    weight: 15
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    type: address_default
     region: content
   field_expected_delivery:
     weight: 12

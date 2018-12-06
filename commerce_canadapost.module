@@ -76,6 +76,7 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
       'field_attempted_delivery',
       'field_expected_delivery',
       'field_mailed_on',
+      'field_current_location',
     ];
     foreach ($fields as $field) {
       if (isset($shipment[$field])) {
@@ -124,6 +125,17 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
 
   if (!empty($tracking_summary['mailed-on-date'])) {
     $values['field_mailed_on'][0]['value'] = new DrupalDateTime($tracking_summary['mailed-on-date']);
+  }
+
+  // TODO: Confirm that we are in fact, getting an actual address back.
+  if (!empty($tracking_summary['event-location'])) {
+    /*$values['field_current_location']['address'] = [
+      'country_code' => 'CA',
+      'address_line1' => '123 Test Street',
+      'locality' => 'Kelowna',
+      'administrative_area' => 'BC',
+      'postal_code' => 'V1X5V1',
+    ];*/
   }
 
   $form_state->setValues($values);
@@ -230,6 +242,13 @@ function commerce_canadapost_update_tracking_fields(ShipmentInterface $shipment,
 
   if (!empty($tracking_summary['mailed-on-date'])) {
     $shipment->set('field_mailed_on', new DrupalDateTime($tracking_summary['mailed-on-date']));
+  }
+
+  // TODO: Confirm that we are in fact, getting an actual address back.
+  if (!empty($tracking_summary['event-location'])) {
+    $shipment->set('field_current_location', [
+      'address' => []
+    ]);
   }
 
   // Now, save the shipment.
