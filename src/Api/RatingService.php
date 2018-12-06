@@ -3,9 +3,9 @@
 namespace Drupal\commerce_canadapost\Api;
 
 use CanadaPost\Exception\ClientException;
-use Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
+use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
 use Drupal\commerce_shipping\ShippingRate;
 use Drupal\commerce_shipping\ShippingService;
 use Drupal\Core\Config\ConfigFactoryInterface;
@@ -50,10 +50,10 @@ class RatingService implements RatingServiceInterface {
   /**
    * {@inheritdoc}
    */
-  public function getRates(CanadaPost $canadaPost, ShipmentInterface $shipment, array $options) {
+  public function getRates(ShippingMethodInterface $shipping_method, ShipmentInterface $shipment, array $options) {
     $order = $shipment->getOrder();
-    $origin_postal_code = !empty($canadaPost->getConfiguration()['shipping_information']['origin_postal_code'])
-      ? $canadaPost->getConfiguration()['shipping_information']['origin_postal_code']
+    $origin_postal_code = !empty($shipping_method->getConfiguration()['shipping_information']['origin_postal_code'])
+      ? $shipping_method->getConfiguration()['shipping_information']['origin_postal_code']
       : $order->getStore()
         ->getAddress()
         ->getPostalCode();
@@ -63,16 +63,8 @@ class RatingService implements RatingServiceInterface {
       ->getPostalCode();
     $weight = $shipment->getWeight()->convert('kg')->getNumber();
 
-    $config = [
-      'username' => $this->config->get('api.username'),
-      'password' => $this->config->get('api.password'),
-      'customer_number' => $this->config->get('api.customer_number'),
-      'contract_id' => $this->config->get('api.contract_id'),
-      'env' => $this->getEnvironmentMode(),
-    ];
-
     try {
-      $request = new Rating($config);
+      $request = $this->getRequest();
       $response = $request->getRates($origin_postal_code, $postal_code, $weight, $options);
     }
     catch (ClientException $exception) {
@@ -85,6 +77,24 @@ class RatingService implements RatingServiceInterface {
     }
 
     return $this->parseResponse($response);
+  }
+
+  /**
+   * Returns a Canada Post request service api.
+   *
+   * @return \CanadaPost\Rating
+   *   The Canada Post request service object.
+   */
+  protected function getRequest() {
+    $config = [
+      'username' => $this->config->get('api.username'),
+      'password' => $this->config->get('api.password'),
+      'customer_number' => $this->config->get('api.customer_number'),
+      'contract_id' => $this->config->get('api.contract_id'),
+      'env' => $this->getEnvironmentMode(),
+    ];
+
+    return new Rating($config);
   }
 
   /**
