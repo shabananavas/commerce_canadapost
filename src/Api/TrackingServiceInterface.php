@@ -12,6 +12,9 @@ interface TrackingServiceInterface {
    *
    * @param string $tracking_pin
    *   The tracking PIN for which to fetch the tracking number.
+   *
+   * @return array
+   *   The tracking summary for the specified pin.
    */
   public function fetchTrackingSummary($tracking_pin);
 

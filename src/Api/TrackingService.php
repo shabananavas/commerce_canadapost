@@ -46,14 +46,8 @@ class TrackingService implements TrackingServiceInterface {
    * {@inheritdoc}
    */
   public function fetchTrackingSummary($tracking_pin) {
-    $config = [
-      'username' => $this->config->get('api.username'),
-      'password' => $this->config->get('api.password'),
-      'customer_number' => $this->config->get('api.customer_number'),
-    ];
-
     try {
-      $tracking = new Tracking($config);
+      $tracking = $this->getRequest();
       $response = $tracking->getSummary($tracking_pin);
     }
     catch (ClientException $exception) {
@@ -67,6 +61,22 @@ class TrackingService implements TrackingServiceInterface {
     }
 
     return $this->parseResponse($response);
+  }
+
+  /**
+   * Returns a Canada Post request service api.
+   *
+   * @return \CanadaPost\Tracking
+   *   The Canada Post tracking request service object.
+   */
+  protected function getRequest() {
+    $config = [
+      'username' => $this->config->get('api.username'),
+      'password' => $this->config->get('api.password'),
+      'customer_number' => $this->config->get('api.customer_number'),
+    ];
+
+    return $tracking = new Tracking($config);
   }
 
   /**
