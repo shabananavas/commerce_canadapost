@@ -2,22 +2,9 @@
 
 namespace Drupal\Tests\commerce_canadapost\Unit;
 
-use CommerceGuys\Addressing\Address;
-use CommerceGuys\Addressing\AddressInterface;
-use Drupal\commerce_canadapost\Api\RatingService;
-use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_shipping\Entity\ShipmentInterface;
-use Drupal\commerce_store\Entity\StoreInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Config\ImmutableConfig;
-use Drupal\Core\Field\FieldItemListInterface;
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
-use Drupal\Core\Logger\LoggerChannelInterface;
-use Drupal\physical\Weight;
-use Drupal\profile\Entity\ProfileInterface;
-use Drupal\Tests\UnitTestCase;
-use GuzzleHttp\Handler\MockHandler;
-use GuzzleHttp\Psr7\Response;
+use CanadaPost\Exception\ClientException;
+use CanadaPost\Rating;
+use Psr\Http\Message\RequestInterface;
 
 /**
  * Class CanadaPostRateRequestTest.
@@ -25,111 +12,144 @@ use GuzzleHttp\Psr7\Response;
  * @coversDefaultClass \Drupal\commerce_canadapost\Api\RatingService
  * @group commerce_canadapost
  */
-class CanadaPostRateRequestTest extends UnitTestCase {
+class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
 
   /**
-   * The Canada Post api service.
-   *
-   * @var \Drupal\commerce_canadapost\Api\RatingServiceInterface
+   * ::covers getRates.
    */
-  protected $ratingService;
+  public function testGetRatesWithPriceQuotes() {
+    // Technically, it's not good practice to mock the class we test, however,
+    // we need to mock the getRequest() function and this is the only way to do
+    // so.
+    $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
+      ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
+      ->setMethods(['getRequest'])
+      ->getMock();
 
-  /**
-   * The mock shipment entity.
-   *
-   * @var \Drupal\commerce_shipping\Entity\ShipmentInterface
-   */
-  protected $shipment;
+    // Tell the 'getRequest' method to return our mock request.
+    $request = $this->getMockRequest();
+    $rating_service->method('getRequest')->willReturn($request);
 
-  /**
-   * Set up requirements for test.
-   */
-  public function setUp() {
-    parent::setUp();
-    define('COMMERCE_CANADAPOST_LOGGER_CHANNEL', 'commerce_canadapost');
+    // Now, test that the function has successfully returned rates.
+    $rates = $rating_service->getRates($this->shippingMethod, $this->shipment, []);
 
-    $config_factory = $this->prophesize(ConfigFactoryInterface::class);
-    $config = $this->prophesize(ImmutableConfig::class);
-    $config_factory->get('commerce_canadapost.settings')
-      ->willReturn($config->reveal());
-    $config->get('api.rate.origin_postal_code')
-      ->willReturn('');
-    $config->get('api.mode')
-      ->willReturn('');
-    $config->get('api.username')
-      ->willReturn('mock_name');
-    $config->get('api.password')
-      ->willReturn('mock_pwd');
-    $config->get('api.customer_number')
-      ->willReturn('mock_cn');
-    $logger_factory = $this->prophesize(LoggerChannelFactoryInterface::class);
-    $logger = $this->prophesize(LoggerChannelInterface::class);
-    $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL)
-      ->willReturn($logger->reveal());
+    $this->assertNotNull($rates);
+    $this->assertCount(4, $rates);
+    $expedited_rate = $rates[0];
+    $this->assertEquals($expedited_rate->getId(), 'DOM.EP');
+    $this->assertInstanceOf('Drupal\commerce_shipping\ShippingRate', $expedited_rate);
+    $this->assertInstanceOf('Drupal\commerce_price\Price', $expedited_rate->getAmount());
+    $this->assertEquals('10.21', $expedited_rate->getAmount()->getNumber());
 
-    $this->ratingService = new RatingService($config_factory->reveal(), $logger_factory->reveal());
-
+    $this->assertEquals($rates[1]->getId(), 'DOM.PC');
+    $this->assertEquals($rates[2]->getId(), 'DOM.RP');
+    $this->assertEquals($rates[3]->getId(), 'DOM.XP');
   }
 
   /**
    * ::covers getRates.
    */
-  public function testGetRates() {
-    $shipment = $this->mockShipment();
-    $mock_handler = new MockHandler([
-      new Response(
-        200,
-        [],
-        file_get_contents(__DIR__ . '/../Mocks/rating-response-success.xml')),
-    ]);
-    $rates = $this->ratingService->getRates($shipment, ['handler' => $mock_handler]);
+  public function testGetRatesWithoutPriceQuotes() {
+    // Technically, it's not good practice to mock the class we test, however,
+    // we need to mock the getRequest() function and this is the only way to do
+    // so.
+    $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
+      ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
+      ->setMethods(['getRequest'])
+      ->getMock();
 
-    // Test the parsed response.
-    foreach ($rates as $rate) {
-      /* @var \Drupal\commerce_shipping\ShippingRate $rate */
-      $this->assertInstanceOf('Drupal\commerce_shipping\ShippingRate', $rate);
-      $this->assertInstanceOf('Drupal\commerce_price\Price', $rate->getAmount());
-      $this->assertGreaterThan(0, $rate->getAmount()->getNumber());
-      $this->assertEquals($rate->getAmount()->getCurrencyCode(), 'CAD');
-      $this->assertNotEmpty($rate->getService()->getLabel());
-    }
-    $this->assertTrue(is_array($rates));
+    // Tell the 'getRequest' method to return our mock request.
+    $request = $this->getMockRequest('without_price_quotes');
+    $rating_service->method('getRequest')->willReturn($request);
+
+    // Now, test that the function has successfully returned rates.
+    $rates = $rating_service->getRates($this->shippingMethod, $this->shipment, []);
+
+    $this->assertEquals($rates, []);
   }
 
   /**
-   * Creates a mock Drupal Commerce shipment entity.
-   *
-   * @return \Drupal\commerce_shipping\Entity\ShipmentInterface
-   *   A mocked commerce shipment object.
+   * ::covers getRates.
    */
-  private function mockShipment() {
-    // Mock a Drupal Commerce Order and associated objects.
-    $order = $this->prophesize(OrderInterface::class);
-    $store = $this->prophesize(StoreInterface::class);
+  public function testGetRatesWithException() {
+    // Technically, it's not good practice to mock the class we test, however,
+    // we need to mock the getRequest() function and this is the only way to do
+    // so.
+    $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
+      ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
+      ->setMethods(['getRequest'])
+      ->getMock();
 
-    // Mock the getAddress method to return a Canadian address.
-    $store->getAddress()
-      ->willReturn(new Address('CA', 'YK', 'Whitehorse', '', 'Y1A4P9', '', '9031 Quartz Road'));
-    $order->getStore()->willReturn($store->reveal());
+    // Tell the 'getRequest' method to return our mock request.
+    $request = $this->getMockRequest('failure');
+    $rating_service->method('getRequest')->willReturn($request);
 
-    // Mock a Drupal Commerce shipment and associated objects.
-    $shipment = $this->prophesize(ShipmentInterface::class);
-    $profile = $this->prophesize(ProfileInterface::class);
-    $address_list = $this->prophesize(FieldItemListInterface::class);
-    $address = $this->prophesize(AddressInterface::class);
+    // Now, test that the exception works correctly.
+    $rates = $rating_service->getRates($this->shippingMethod, $this->shipment, []);
 
-    // Mock the address list to return a Canadian address.
-    $address->getPostalCode()->willReturn('Y1A2C6');
-    $address_list->first()->willReturn($address->reveal());
-    $profile->get('address')->willReturn($address_list->reveal());
-    $shipment->getShippingProfile()->willReturn($profile->reveal());
-    $shipment->getOrder()->willReturn($order->reveal());
+    $this->assertNull($rates);
+  }
 
-    // Mock the shipments weight.
-    $shipment->getWeight()->willReturn(new Weight(1000, 'g'));
+  /**
+   * Creates a mock Canada Post request service class.
+   *
+   * @param string $set_request_status
+   *   Whether we want the return request to be an exception or a success.
+   *
+   * @return \CanadaPost\Rating
+   *   The mock Canada Post request service object.
+   */
+  protected function getMockRequest($set_request_status = 'success') {
+    // Fetch the shipment details we need to send to the getRates() function.
+    $order = $this->shipment->getOrder();
+    $origin_postal_code = !empty($this->shippingMethod->getConfiguration()['shipping_information']['origin_postal_code'])
+      ? $this->shippingMethod->getConfiguration()['shipping_information']['origin_postal_code']
+      : $order->getStore()
+        ->getAddress()
+        ->getPostalCode();
+    $postal_code = $this->shipment->getShippingProfile()
+      ->get('address')
+      ->first()
+      ->getPostalCode();
+    $weight = $this->shipment->getWeight()->convert('kg')->getNumber();
 
-    // Return the mocked shipment object.
-    return $shipment->reveal();
+    // Create the mock response that we will set for the getRates() function.
+    $request = $this->prophesize(Rating::class);
+    if ($set_request_status == 'failure') {
+      $request_interface = $this->prophesize(RequestInterface::class);
+      $request
+        ->getRates($origin_postal_code, $postal_code, $weight, [])
+        ->willThrow(new ClientException(
+          'Exception!',
+          'responseBody',
+          $request_interface->reveal()
+        ));
+    }
+    else {
+      $response = $this->getMockResponse();
+
+      // Remove the price-quotes key if we are testing a response w/o price
+      // quotes.
+      if ($set_request_status == 'without_price_quotes') {
+        unset($response['price-quotes']);
+      }
+      $request
+        ->getRates($origin_postal_code, $postal_code, $weight, [])
+        ->willReturn($response);
+    }
+
+    return $request->reveal();
+  }
+
+  /**
+   * Returns a mock response.
+   *
+   * @return array
+   *   An array of price quotes.
+   */
+  protected function getMockResponse() {
+    $xml = simplexml_load_file(__DIR__ . '/../Mocks/rating-response-success.xml');
+    return ['price-quotes' => json_decode(json_encode((array) $xml), TRUE)];
   }
 
 }

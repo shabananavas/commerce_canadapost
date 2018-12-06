@@ -8,6 +8,7 @@
 use Drupal\commerce_store\Entity\StoreInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 
 /**
  * Constants.
@@ -21,6 +22,38 @@ const COMMERCE_CANADAPOST_LOGGER_CHANNEL = 'commerce_canadapost';
 /**
  * Hooks.
  */
+
+/**
+ * Implements hook_help().
+ */
+function commerce_canadapost_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the commerce_canadapost module.
+    case 'help.page.commerce_canadapost':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('This module provides Canada Post shipping calculations for Drupal Commerce by extending the Drupal Commerce Shipping API. This module should be used by those that want to provide dynamic Canada Post shipping rates and tracking for their Canada based Drupal Commerce sites.') . '</p>';
+      $output .= '<h3>' . t('Configuration') . '</h3>';
+      $output .= '<dt>' . t('1. Go to /admin/commerce/config/shipping-methods/add') . '</dt>';
+      $output .= '<dt>' . t('2. Select \'Canada Post\' as the Plugin') . '</dt>';
+      $output .= '<dt>' . t('3. Enter the Canada Post API details') . '</dt>';
+      $output .= '<dt>' . t('4. Select a default package type') . '</dt>';
+      $output .= '<dt>' . t('5. Select all the shipping services that should be disabled') . '</dt>';
+      $output .= '<dt>' . t('6. Click on the Canada Post API settings link under \'API Authentication\' and add your customer number, username, password and other optional config and save configuration') . '</dt>';
+      $output .= '<dt>' . t('7. Add a product to cart and checkout') . '</dt>';
+      $output .= '<dt>' . t('8. Enter your shipping address and click on \'Calculate Shipping\'') . '</dt>';
+      $output .= '<dt>' . t('9. The estimated rates retrieved from Canada Post will now show up for the order') . '</dt>';
+      $output .= '<h3>' . t('Updating Tracking Information') . '</h3>';
+      $output .= '<p>' . t('Tracking summary for each shipment on an order can be seen in the order view page.') . '</p>';
+      $output .= '<p>' . t('To add the tracking code received from Canada Post to a shipment:') . '</p>';
+      $output .= '<dt>' . t('1. Go to /admin/commerce/orders/{COMMERCE_ORDER_ID}/shipments') . '</dt>';
+      $output .= '<dt>' . t('2. Click on the \'Edit\' button under the appropriate shipment') . '</dt>';
+      $output .= '<dt>' . t('3. Enter the tracking code received from Canada Post in the \'Tracking code\' field and save') . '</dt>';
+      $output .= '<p>' . t('Once a shipment is updated with a tracking code, tracking summary is automatically updated via cron. It can also be done via the drush command: `drush cc-uptracking`.') . '</p>';
+
+      return $output;
+  }
+}
 
 /**
  * Implements hook_form_FORM_ID_alter().
