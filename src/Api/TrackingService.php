@@ -6,6 +6,7 @@ use CanadaPost\Exception\ClientException;
 use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Tracking;
+use function var_export;
 
 /**
  * Provides the default Tracking API integration services.
@@ -59,14 +60,26 @@ class TrackingService implements TrackingServiceInterface {
     try {
       $tracking = $this->getRequest();
       $response = $tracking->getSummary($tracking_pin);
+
+      if ($this->apiSettings['log']['request']) {
+        $message = sprintf(
+          'Tracking request made for tracking pin: "%s". Response received: "%s".',
+          $tracking_pin,
+          var_export($response)
+        );
+        $this->logger->info($message);
+      }
     }
     catch (ClientException $exception) {
-      $message = sprintf(
-        'An error has been returned by the Canada Post when fetching the tracking summary for the tracking PIN "%s". The error was: "%s"',
-        $tracking_pin,
-        json_encode($exception->getResponseBody())
-      );
-      $this->logger->error($message);
+      if ($this->apiSettings['log']['response']) {
+        $message = sprintf(
+          'An error has been returned by the Canada Post when fetching the tracking summary for the tracking PIN "%s". The error was: "%s"',
+          $tracking_pin,
+          json_encode($exception->getResponseBody())
+        );
+        $this->logger->error($message);
+      }
+
       return;
     }
 
