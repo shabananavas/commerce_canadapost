@@ -3,7 +3,7 @@
 namespace Drupal\commerce_canadapost\Api;
 
 use CanadaPost\Exception\ClientException;
-use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Tracking;
 
@@ -13,32 +13,39 @@ use CanadaPost\Tracking;
 class TrackingService implements TrackingServiceInterface {
 
   /**
-   * The Canada Post configuration object.
+   * The Canada Post utilities service object.
    *
-   * @var \Drupal\Core\Config\Config
+   * @var \Drupal\commerce_canadapost\UtilitiesService
    */
-  protected $config;
+  protected $service;
 
   /**
    * The logger channel factory.
    *
-   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
    */
   protected $logger;
 
   /**
+   * The Canada Post API settings.
+   *
+   * @var array
+   */
+  protected $apiSettings;
+
+  /**
    * Constructs a new TrackingService object.
    *
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The configuration object factory.
+   * @param \Drupal\commerce_canadapost\UtilitiesService $service
+   *   The Canada Post utilities service object.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger channel factory.
    */
   public function __construct(
-    ConfigFactoryInterface $config_factory,
+    UtilitiesService $service,
     LoggerChannelFactoryInterface $logger_factory
   ) {
-    $this->config = $config_factory->get('commerce_canadapost.settings');
+    $this->service = $service;
     $this->logger = $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
   }
 
@@ -46,6 +53,9 @@ class TrackingService implements TrackingServiceInterface {
    * {@inheritdoc}
    */
   public function fetchTrackingSummary($tracking_pin) {
+    // Fetch the Canada Post API settings first.
+    $this->apiSettings = $this->service->getApiSettings();
+
     try {
       $tracking = $this->getRequest();
       $response = $tracking->getSummary($tracking_pin);
@@ -71,9 +81,9 @@ class TrackingService implements TrackingServiceInterface {
    */
   protected function getRequest() {
     $config = [
-      'username' => $this->config->get('api.username'),
-      'password' => $this->config->get('api.password'),
-      'customer_number' => $this->config->get('api.customer_number'),
+      'username' => $this->apiSettings['username'],
+      'password' => $this->apiSettings['password'],
+      'customer_number' => $this->apiSettings['customer_number'],
     ];
 
     return $tracking = new Tracking($config);

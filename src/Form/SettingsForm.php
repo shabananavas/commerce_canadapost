@@ -29,7 +29,8 @@ class SettingsForm extends ConfigFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
     // Build the form fields.
-    _commerce_canadapost_build_api_form($form, $form_state);
+    $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+    $form += $utilities_service->buildApiForm();
 
     return parent::buildForm($form, $form_state);
   }
