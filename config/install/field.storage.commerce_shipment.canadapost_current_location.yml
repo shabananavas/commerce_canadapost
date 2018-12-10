@@ -4,15 +4,14 @@ dependencies:
   config:
     - commerce_shipping.commerce_shipment_type.canadapost
   module:
+    - address
     - commerce_shipping
-    - datetime
-id: commerce_shipment.field_mailed_on
-field_name: field_mailed_on
+id: commerce_shipment.canadapost_current_location
+field_name: canadapost_current_location
 entity_type: commerce_shipment
-type: datetime
-settings:
-  datetime_type: date
-module: datetime
+type: address
+settings: {  }
+module: address
 locked: false
 cardinality: 1
 translatable: true

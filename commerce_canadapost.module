@@ -247,7 +247,7 @@ function commerce_canadapost_update_tracking_fields(ShipmentInterface $shipment,
   // TODO: Confirm that we are in fact, getting an actual address back.
   if (!empty($tracking_summary['event-location'])) {
     $shipment->set('field_current_location', [
-      'address' => []
+      'address' => [],
     ]);
   }
 
