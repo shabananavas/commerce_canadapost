@@ -6,6 +6,7 @@ use CanadaPost\Exception\ClientException;
 use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Tracking;
+use function ob_start;
 use function var_export;
 
 /**
@@ -58,6 +59,12 @@ class TrackingService implements TrackingServiceInterface {
     $this->apiSettings = $this->service->getApiSettings();
 
     try {
+      // Turn on output buffering if we are in test mode.
+      $test_mode = $this->apiSettings['mode'] === 'test';
+      if ($test_mode) {
+        ob_start();
+      }
+
       $tracking = $this->getRequest();
       $response = $tracking->getSummary($tracking_pin);
 
@@ -81,6 +88,11 @@ class TrackingService implements TrackingServiceInterface {
       }
 
       return;
+    }
+
+    // Log the output buffer if we are in test mode.
+    if ($test_mode) {
+      $this->logger->info(var_export(ob_get_clean()));
     }
 
     return $this->parseResponse($response);

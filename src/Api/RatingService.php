@@ -11,6 +11,7 @@ use Drupal\commerce_shipping\ShippingRate;
 use Drupal\commerce_shipping\ShippingService;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Rating;
+use function ob_start;
 use function var_export;
 
 /**
@@ -77,6 +78,12 @@ class RatingService implements RatingServiceInterface {
     $weight = $shipment->getWeight()->convert('kg')->getNumber();
 
     try {
+      // Turn on output buffering if we are in test mode.
+      $test_mode = $this->apiSettings['mode'] === 'test';
+      if ($test_mode) {
+        ob_start();
+      }
+
       $request = $this->getRequest();
       $response = $request->getRates($origin_postal_code, $postal_code, $weight, $options);
 
@@ -100,6 +107,11 @@ class RatingService implements RatingServiceInterface {
       }
 
       return;
+    }
+
+    // Log the output buffer if we are in test mode.
+    if ($test_mode) {
+      $this->logger->info(var_export(ob_get_clean()));
     }
 
     return $this->parseResponse($response);
