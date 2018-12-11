@@ -77,7 +77,7 @@ class TrackingService implements TrackingServiceInterface {
       }
 
       if ($this->apiSettings['log']['request']) {
-        $response_output = print_r($response, TRUE);
+        $response_output = var_export($response, TRUE);
         $message = sprintf(
           'Tracking request made for tracking pin: "%s". Response received: "%s".',
           $tracking_pin,
