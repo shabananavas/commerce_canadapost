@@ -74,9 +74,18 @@ class TrackingService implements TrackingServiceInterface {
       'username' => $this->config->get('api.username'),
       'password' => $this->config->get('api.password'),
       'customer_number' => $this->config->get('api.customer_number'),
+      'contract_id' => $this->config->get('api.contract_id'),
+      'env' => $this->getEnvironmentMode(),
     ];
 
     return $tracking = new Tracking($config);
+  }
+
+  /**
+   * Convert the environment mode to the correct format for the SDK.
+   */
+  private function getEnvironmentMode() {
+    return $this->config->get('api.mode') === 'live' ? 'prod' : 'dev';
   }
 
   /**
