@@ -96,7 +96,7 @@ class RatingService implements RatingServiceInterface {
       }
 
       if ($this->apiSettings['log']['request']) {
-        $response_output = print_r($response, TRUE);
+        $response_output = var_export($response, TRUE);
         $message = sprintf(
           'Rating request made for order "%s". Response received: "%s".',
           $order->id(),
