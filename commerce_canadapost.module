@@ -72,20 +72,14 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
     return;
   }
 
-  foreach ($form['shipping_information']['shipments'] as &$shipment) {
-    $fields = [
-      'canadapost_actual_delivery',
-      'canadapost_attempted_delivery',
-      'canadapost_expected_delivery',
-      'canadapost_mailed_on',
-      'canadapost_current_location',
-    ];
-    foreach ($fields as $field) {
-      if (isset($shipment[$field])) {
-        $shipment[$field]['#access'] = FALSE;
-      }
-    }
-  }
+  _commerce_canadapost_hide_tracking_fields($form);
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function commerce_canadapost_form_commerce_checkout_flow_alter(&$form, FormStateInterface $form_state, $form_id) {
+  _commerce_canadapost_hide_tracking_fields($form);
 }
 
 /**
@@ -309,4 +303,27 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
   }
 
   $store->save();
+}
+
+/**
+ * Hide the Canada Post tracking fields from the checkout form.
+ *
+ * @param array $form
+ *   The form array.
+ */
+function _commerce_canadapost_hide_tracking_fields(array &$form) {
+  foreach ($form['shipping_information']['shipments'] as &$shipment) {
+    $fields = [
+      'canadapost_actual_delivery',
+      'canadapost_attempted_delivery',
+      'canadapost_expected_delivery',
+      'canadapost_mailed_on',
+      'canadapost_current_location',
+    ];
+    foreach ($fields as $field) {
+      if (isset($shipment[$field])) {
+        $shipment[$field]['#access'] = FALSE;
+      }
+    }
+  }
 }
