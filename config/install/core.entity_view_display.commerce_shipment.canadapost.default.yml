@@ -38,9 +38,10 @@ content:
   canadapost_current_location:
     weight: 15
     label: above
-    settings: {  }
+    settings:
+      link_to_entity: false
     third_party_settings: {  }
-    type: address_default
+    type: string
     region: content
   canadapost_expected_delivery:
     weight: 12

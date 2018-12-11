@@ -9,9 +9,12 @@ dependencies:
 id: commerce_shipment.canadapost_current_location
 field_name: canadapost_current_location
 entity_type: commerce_shipment
-type: address
-settings: {  }
-module: address
+type: string
+settings:
+  max_length: 255
+  is_ascii: false
+  case_sensitive: false
+module: core
 locked: false
 cardinality: 1
 translatable: true

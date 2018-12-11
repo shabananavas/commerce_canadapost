@@ -74,11 +74,11 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
 
   foreach ($form['shipping_information']['shipments'] as &$shipment) {
     $fields = [
-      'field_actual_delivery',
-      'field_attempted_delivery',
-      'field_expected_delivery',
-      'field_mailed_on',
-      'field_current_location',
+      'canadapost_actual_delivery',
+      'canadapost_attempted_delivery',
+      'canadapost_expected_delivery',
+      'canadapost_mailed_on',
+      'canadapost_current_location',
     ];
     foreach ($fields as $field) {
       if (isset($shipment[$field])) {
@@ -146,32 +146,26 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
   $tracking_service = \Drupal::service('commerce_canadapost.tracking_api');
   $tracking_summary = $tracking_service->fetchTrackingSummary($submitted_tracking_pin);
 
+  // Update the tracking fiels with the summary.
   $values = [];
-  if (!empty($tracking_summary['actual-delivery-date'])) {
-    $values['field_actual_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['actual-delivery-date']);
+  if ($tracking_summary['actual-delivery-date'] != '') {
+    $values['canadapost_actual_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['actual-delivery-date']);
   }
 
-  if (!empty($tracking_summary['attempted-date'])) {
-    $values['field_attempted_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['attempted-date']);
+  if ($tracking_summary['attempted-date'] != '') {
+    $values['canadapost_attempted_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['attempted-date']);
   }
 
-  if (!empty($tracking_summary['expected-delivery-date'])) {
-    $values['field_expected_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['expected-delivery-date']);
+  if ($tracking_summary['expected-delivery-date'] != '') {
+    $values['canadapost_expected_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['expected-delivery-date']);
   }
 
-  if (!empty($tracking_summary['mailed-on-date'])) {
-    $values['field_mailed_on'][0]['value'] = new DrupalDateTime($tracking_summary['mailed-on-date']);
+  if ($tracking_summary['mailed-on-date'] != '') {
+    $values['canadapost_mailed_on'][0]['value'] = new DrupalDateTime($tracking_summary['mailed-on-date']);
   }
 
-  // TODO: Confirm that we are in fact, getting an actual address back.
-  if (!empty($tracking_summary['event-location'])) {
-    /*$values['field_current_location']['address'] = [
-      'country_code' => 'CA',
-      'address_line1' => '123 Test Street',
-      'locality' => 'Kelowna',
-      'administrative_area' => 'BC',
-      'postal_code' => 'V1X5V1',
-    ];*/
+  if ($tracking_summary['event-location'] != '') {
+    $values['canadapost_current_location'][0]['value'] = $tracking_summary['event-location'];
   }
 
   $form_state->setValues($values);
@@ -264,27 +258,24 @@ function _commerce_canadapost_fetch_shipments_for_tracking(array $order_ids = NU
  */
 function commerce_canadapost_update_tracking_fields(ShipmentInterface $shipment, array $tracking_summary) {
   // Update the fields.
-  if (!empty($tracking_summary['actual-delivery-date'])) {
-    $shipment->set('field_actual_delivery', new DrupalDateTime($tracking_summary['actual-delivery-date']));
+  if ($tracking_summary['actual-delivery-date'] != '') {
+    $shipment->set('canadapost_actual_delivery', $tracking_summary['actual-delivery-date']);
   }
 
-  if (!empty($tracking_summary['attempted-date'])) {
-    $shipment->set('field_attempted_delivery', new DrupalDateTime($tracking_summary['attempted-date']));
+  if ($tracking_summary['attempted-date'] != '') {
+    $shipment->set('canadapost_attempted_delivery', $tracking_summary['attempted-date']);
   }
 
-  if (!empty($tracking_summary['expected-delivery-date'])) {
-    $shipment->set('field_expected_delivery', new DrupalDateTime($tracking_summary['expected-delivery-date']));
+  if ($tracking_summary['expected-delivery-date'] != '') {
+    $shipment->set('canadapost_expected_delivery', $tracking_summary['expected-delivery-date']);
   }
 
-  if (!empty($tracking_summary['mailed-on-date'])) {
-    $shipment->set('field_mailed_on', new DrupalDateTime($tracking_summary['mailed-on-date']));
+  if ($tracking_summary['mailed-on-date'] != '') {
+    $shipment->set('canadapost_mailed_on', $tracking_summary['mailed-on-date']);
   }
 
-  // TODO: Confirm that we are in fact, getting an actual address back.
-  if (!empty($tracking_summary['event-location'])) {
-    $shipment->set('field_current_location', [
-      'address' => [],
-    ]);
+  if ($tracking_summary['event-location'] != '') {
+    $shipment->set('canadapost_current_location', $tracking_summary['event-location']);
   }
 
   // Now, save the shipment.

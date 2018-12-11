@@ -31,9 +31,10 @@ content:
   canadapost_current_location:
     weight: 25
     settings:
-      default_country: null
+      size: 60
+      placeholder: ''
     third_party_settings: {  }
-    type: address_default
+    type: string_textfield
     region: content
   canadapost_expected_delivery:
     weight: 22
