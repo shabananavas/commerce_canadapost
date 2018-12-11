@@ -147,11 +147,11 @@ class CanadaPost extends ShippingMethodBase {
     $form['api']['info'] = [
       '#type' => 'markup',
       '#markup' => $this->t(
-        'Please @action your @link.',
+        'Canada Post API settings can be added per store or can be configured to be used sitewide. Please @action your @link here.',
         [
           '@action' => $this->apiIsConfigured() ? 'review' : 'enter',
           '@link' => Link::createFromRoute(
-            $this->t('Canada Post API settings'),
+            $this->t('Canada Post sitewide API settings'),
             'commerce_canadapost.settings_form')->toString(),
         ]
       ),
@@ -192,7 +192,6 @@ class CanadaPost extends ShippingMethodBase {
       $this,
       $shipment,
       [
-        'debug' => FALSE,
         'option_codes' => $this->configuration['shipping_information']['option_codes'],
         'service_codes' => $this->configuration['services'],
       ]

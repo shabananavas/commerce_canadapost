@@ -3,12 +3,12 @@
 namespace Drupal\commerce_canadapost\Api;
 
 use CanadaPost\Exception\ClientException;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
 use Drupal\commerce_shipping\ShippingRate;
 use Drupal\commerce_shipping\ShippingService;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Rating;
 
@@ -18,11 +18,11 @@ use CanadaPost\Rating;
 class RatingService implements RatingServiceInterface {
 
   /**
-   * The Canada Post configuration object.
+   * The Canada Post utilities service object.
    *
-   * @var \Drupal\Core\Config\Config
+   * @var \Drupal\commerce_canadapost\UtilitiesService
    */
-  protected $config;
+  protected $service;
 
   /**
    * The logger channel factory.
@@ -32,18 +32,25 @@ class RatingService implements RatingServiceInterface {
   protected $logger;
 
   /**
+   * The Canada Post API settings.
+   *
+   * @var array
+   */
+  protected $apiSettings;
+
+  /**
    * Constructs a new TrackingService object.
    *
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The configuration object factory.
+   * @param \Drupal\commerce_canadapost\UtilitiesService $service
+   *   The Canada Post utilities service object.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger channel factory.
    */
   public function __construct(
-    ConfigFactoryInterface $config_factory,
+    UtilitiesService $service,
     LoggerChannelFactoryInterface $logger_factory
   ) {
-    $this->config = $config_factory->get('commerce_canadapost.settings');
+    $this->service = $service;
     $this->logger = $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
   }
 
@@ -52,6 +59,11 @@ class RatingService implements RatingServiceInterface {
    */
   public function getRates(ShippingMethodInterface $shipping_method, ShipmentInterface $shipment, array $options) {
     $order = $shipment->getOrder();
+    $store = $order->getStore();
+
+    // Fetch the Canada Post API settings first.
+    $this->apiSettings = $this->service->getApiSettings($store);
+
     $origin_postal_code = !empty($shipping_method->getConfiguration()['shipping_information']['origin_postal_code'])
       ? $shipping_method->getConfiguration()['shipping_information']['origin_postal_code']
       : $order->getStore()
@@ -64,16 +76,45 @@ class RatingService implements RatingServiceInterface {
     $weight = $shipment->getWeight()->convert('kg')->getNumber();
 
     try {
+      // Turn on output buffering if we are in test mode.
+      $test_mode = $this->apiSettings['mode'] === 'test';
+      if ($test_mode) {
+        ob_start();
+      }
+
       $request = $this->getRequest();
       $response = $request->getRates($origin_postal_code, $postal_code, $weight, $options);
+
+      // Log the output buffer if we are in test mode.
+      if ($test_mode) {
+        $output = ob_get_contents();
+        ob_end_clean();
+
+        if (!empty($output)) {
+          $this->logger->info($output);
+        }
+      }
+
+      if ($this->apiSettings['log']['request']) {
+        $response_output = print_r($response, TRUE);
+        $message = sprintf(
+          'Rating request made for order "%s". Response received: "%s".',
+          $order->id(),
+          $response_output
+        );
+        $this->logger->info($message);
+      }
     }
     catch (ClientException $exception) {
-      $message = sprintf(
-        'An error has been returned by the Canada Post when fetching the shipping rates. The error was: "%s"',
-        json_encode($exception->getResponseBody())
-      );
-      $this->logger->error($message);
-      return;
+      if ($this->apiSettings['log']['response']) {
+        $message = sprintf(
+          'An error has been returned by the Canada Post shipment method when fetching the shipping rates. The error was: "%s"',
+          json_encode($exception->getResponseBody())
+        );
+        $this->logger->error($message);
+      }
+
+      return [];
     }
 
     return $this->parseResponse($response);
@@ -87,10 +128,10 @@ class RatingService implements RatingServiceInterface {
    */
   protected function getRequest() {
     $config = [
-      'username' => $this->config->get('api.username'),
-      'password' => $this->config->get('api.password'),
-      'customer_number' => $this->config->get('api.customer_number'),
-      'contract_id' => $this->config->get('api.contract_id'),
+      'username' => $this->apiSettings['username'],
+      'password' => $this->apiSettings['password'],
+      'customer_number' => $this->apiSettings['customer_number'],
+      'contract_id' => $this->apiSettings['contract_id'],
       'env' => $this->getEnvironmentMode(),
     ];
 
@@ -101,7 +142,7 @@ class RatingService implements RatingServiceInterface {
    * Convert the environment mode to the correct format for the SDK.
    */
   private function getEnvironmentMode() {
-    return $this->config->get('api.mode') === 'live' ? 'prod' : 'dev';
+    return $this->apiSettings['mode'] === 'live' ? 'prod' : 'dev';
   }
 
   /**

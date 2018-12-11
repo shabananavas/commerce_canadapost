@@ -21,23 +21,13 @@ class Commands extends DrushCommands {
   protected $trackingApi;
 
   /**
-   * The Rating API service.
-   *
-   * @var \Drupal\commerce_canadapost\Api\RatingServiceInterface
-   */
-  protected $ratingApi;
-
-  /**
    * Constructs a new Commands object.
    *
-   * @param \Drupal\commerce_canadapost\Api\RatingServiceInterface $service_api
-   *   The Rating API service.
    * @param \Drupal\commerce_canadapost\Api\TrackingServiceInterface $tracking_api
    *   The Tracking API service.
    */
   public function __construct(RatingServiceInterface $service_api, TrackingServiceInterface $tracking_api) {
     $this->trackingApi = $tracking_api;
-    $this->ratingApi = $service_api;
   }
 
   /**

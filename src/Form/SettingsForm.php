@@ -28,56 +28,9 @@ class SettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $config = $this->config('commerce_canadapost.settings');
-
-    $form['api'] = [
-      '#type' => 'details',
-      '#title' => $this->t('API authentication'),
-      '#open' => TRUE,
-    ];
-
-    $form['api']['customer_number'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Customer number'),
-      '#default_value' => $config->get('api.customer_number'),
-      '#required' => TRUE,
-    ];
-    $form['api']['username'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Username'),
-      '#default_value' => $config->get('api.username'),
-      '#required' => TRUE,
-    ];
-    $form['api']['password'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Password'),
-      '#default_value' => $config->get('api.password'),
-      '#required' => TRUE,
-    ];
-    $form['api']['contract_id'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Contract ID'),
-      '#default_value' => $config->get('api.contract_id'),
-    ];
-    $form['api']['mode'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Mode'),
-      '#default_value' => $config->get('api.mode'),
-      '#options' => [
-        'test' => $this->t('Test'),
-        'live' => $this->t('Live'),
-      ],
-      '#required' => TRUE,
-    ];
-    $form['api']['log'] = [
-      '#type' => 'checkboxes',
-      '#title' => $this->t('Log the following messages for debugging'),
-      '#options' => [
-        'request' => $this->t('API request messages'),
-        'response' => $this->t('API response messages'),
-      ],
-      '#default_value' => $config->get('api.log'),
-    ];
+    // Build the form fields.
+    $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+    $form += $utilities_service->buildApiForm();
 
     return parent::buildForm($form, $form_state);
   }

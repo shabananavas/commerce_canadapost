@@ -3,7 +3,7 @@
 namespace Drupal\commerce_canadapost\Api;
 
 use CanadaPost\Exception\ClientException;
-use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Tracking;
 
@@ -13,32 +13,39 @@ use CanadaPost\Tracking;
 class TrackingService implements TrackingServiceInterface {
 
   /**
-   * The Canada Post configuration object.
+   * The Canada Post utilities service object.
    *
-   * @var \Drupal\Core\Config\Config
+   * @var \Drupal\commerce_canadapost\UtilitiesService
    */
-  protected $config;
+  protected $service;
 
   /**
    * The logger channel factory.
    *
-   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
    */
   protected $logger;
 
   /**
+   * The Canada Post API settings.
+   *
+   * @var array
+   */
+  protected $apiSettings;
+
+  /**
    * Constructs a new TrackingService object.
    *
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The configuration object factory.
+   * @param \Drupal\commerce_canadapost\UtilitiesService $service
+   *   The Canada Post utilities service object.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger channel factory.
    */
   public function __construct(
-    ConfigFactoryInterface $config_factory,
+    UtilitiesService $service,
     LoggerChannelFactoryInterface $logger_factory
   ) {
-    $this->config = $config_factory->get('commerce_canadapost.settings');
+    $this->service = $service;
     $this->logger = $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
   }
 
@@ -46,18 +53,50 @@ class TrackingService implements TrackingServiceInterface {
    * {@inheritdoc}
    */
   public function fetchTrackingSummary($tracking_pin) {
+    // Fetch the Canada Post API settings first.
+    $this->apiSettings = $this->service->getApiSettings();
+
     try {
+      // Turn on output buffering if we are in test mode.
+      $test_mode = $this->apiSettings['mode'] === 'test';
+      if ($test_mode) {
+        ob_start();
+      }
+
       $tracking = $this->getRequest();
       $response = $tracking->getSummary($tracking_pin);
+
+      // Log the output buffer if we are in test mode.
+      if ($test_mode) {
+        $output = ob_get_contents();
+        ob_end_clean();
+
+        if (!empty($output)) {
+          $this->logger->info($output);
+        }
+      }
+
+      if ($this->apiSettings['log']['request']) {
+        $response_output = print_r($response, TRUE);
+        $message = sprintf(
+          'Tracking request made for tracking pin: "%s". Response received: "%s".',
+          $tracking_pin,
+          $response_output
+        );
+        $this->logger->info($message);
+      }
     }
     catch (ClientException $exception) {
-      $message = sprintf(
-        'An error has been returned by the Canada Post when fetching the tracking summary for the tracking PIN "%s". The error was: "%s"',
-        $tracking_pin,
-        json_encode($exception->getResponseBody())
-      );
-      $this->logger->error($message);
-      return;
+      if ($this->apiSettings['log']['response']) {
+        $message = sprintf(
+          'An error has been returned by the Canada Post shipment method when fetching the tracking summary for the tracking PIN "%s". The error was: "%s"',
+          $tracking_pin,
+          json_encode($exception->getResponseBody())
+        );
+        $this->logger->error($message);
+      }
+
+      return [];
     }
 
     return $this->parseResponse($response);
@@ -71,10 +110,10 @@ class TrackingService implements TrackingServiceInterface {
    */
   protected function getRequest() {
     $config = [
-      'username' => $this->config->get('api.username'),
-      'password' => $this->config->get('api.password'),
-      'customer_number' => $this->config->get('api.customer_number'),
-      'contract_id' => $this->config->get('api.contract_id'),
+      'username' => $this->apiSettings['username'],
+      'password' => $this->apiSettings['password'],
+      'customer_number' => $this->apiSettings['customer_number'],
+      'contract_id' => $this->apiSettings['contract_id'],
       'env' => $this->getEnvironmentMode(),
     ];
 
@@ -85,7 +124,7 @@ class TrackingService implements TrackingServiceInterface {
    * Convert the environment mode to the correct format for the SDK.
    */
   private function getEnvironmentMode() {
-    return $this->config->get('api.mode') === 'live' ? 'prod' : 'dev';
+    return $this->apiSettings['mode'] === 'live' ? 'prod' : 'dev';
   }
 
   /**

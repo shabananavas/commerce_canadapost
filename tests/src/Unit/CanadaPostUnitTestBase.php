@@ -4,8 +4,6 @@ namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use CommerceGuys\Addressing\AddressInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Tests\UnitTestCase;
@@ -27,13 +25,6 @@ define('COMMERCE_CANADAPOST_LOGGER_CHANNEL', 'commerce_canadapost');
  * @package Drupal\Tests\commerce_canadapost\Unit
  */
 abstract class CanadaPostUnitTestBase extends UnitTestCase {
-
-  /**
-   * The Canada Post configuration object.
-   *
-   * @var \Drupal\Core\Config\ConfigFactoryInterface
-   */
-  protected $configFactory;
 
   /**
    * The logger channel factory.
@@ -62,33 +53,15 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
   public function setUp() {
     parent::setUp();
 
-    $config_factory = $this->prophesize(ConfigFactoryInterface::class);
-    $config = $this->prophesize(ImmutableConfig::class);
-    $config->get('api.rate.origin_postal_code')
-      ->willReturn('');
-    $config->get('api.mode')
-      ->willReturn('');
-    $config->get('api.username')
-      ->willReturn('mock_name');
-    $config->get('api.password')
-      ->willReturn('mock_pwd');
-    $config->get('api.customer_number')
-      ->willReturn('mock_cn');
-    $config->get('api.contract_id')
-      ->willReturn('');
-    $config_factory->get('commerce_canadapost.settings')
-      ->willReturn($config->reveal());
+    $this->shippingMethod = $this->mockShippingMethod();
+    $this->shipment = $this->mockShipment();
 
     $logger_factory = $this->prophesize(LoggerChannelFactoryInterface::class);
     $logger = $this->prophesize(LoggerChannelInterface::class);
     $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL)
       ->willReturn($logger->reveal());
 
-    $this->configFactory = $config_factory->reveal();
     $this->loggerFactory = $logger_factory->reveal();
-
-    $this->shippingMethod = $this->mockShippingMethod();
-    $this->shipment = $this->mockShipment();
   }
 
   /**

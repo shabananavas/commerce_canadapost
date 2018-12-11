@@ -7,6 +7,8 @@
 
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 
@@ -84,6 +86,40 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
       }
     }
   }
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function commerce_canadapost_entity_base_field_info(EntityTypeInterface $entity_type) {
+  if ($entity_type->id() === 'commerce_store') {
+    $fields['canadapost_api_settings'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Canada Post API Settings'))
+      ->setDisplayOptions('view', [
+        'region' => 'hidden',
+      ])
+      ->setDisplayOptions('form', [
+        'region' => 'hidden',
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    return $fields;
+  }
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function commerce_canadapost_form_commerce_store_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  /** @var \Drupal\commerce_store\Entity\StoreInterface $store */
+  $store = $form_state->getFormObject()->getEntity();
+
+  // Build the form fields.
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $form += $utilities_service->buildApiForm($store);
+
+  $form['actions']['submit']['#submit'][] = 'commerce_canadapost_form_commerce_store_form_submit';
 }
 
 /**
@@ -256,4 +292,30 @@ function commerce_canadapost_update_tracking_fields(ShipmentInterface $shipment,
 
   // Return the order ID for this updated shipment.
   return $shipment->getOrderId();
+}
+
+/**
+ * Form submit for the commerce_store entity form.
+ */
+function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInterface $form_state) {
+  $store = $form_state->getFormObject()->getEntity();
+
+  // Grab the form values.
+  $form_values = $form_state->getValues();
+
+  // If the user has opted to create Canada Post API settings for this store,
+  // save it to the store, so that that will be used for this store.
+  if ($form_values['use_sitewide_settings'] == FALSE) {
+    $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+
+    $json_encoded_settings = $utilities_service->encodeSettings($form_values);
+    $store->set('canadapost_api_settings', $json_encoded_settings);
+  }
+  // Else, we empty the store settings so that the sitewide settings will be
+  // used for this store.
+  else {
+    $store->set('canadapost_api_settings', NULL);
+  }
+
+  $store->save();
 }
