@@ -89,9 +89,8 @@ class RatingService implements RatingServiceInterface {
 
       if ($this->apiSettings['log']['request']) {
         $message = sprintf(
-          'Rating request made for order "%s" for shipment with ID: "%s". Response received: "%s".',
+          'Rating request made for order "%s". Response received: "%s".',
           $order->id(),
-          $shipment->id(),
           var_export($response)
         );
         $this->logger->info($message);
