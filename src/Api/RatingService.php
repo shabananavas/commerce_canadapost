@@ -11,8 +11,6 @@ use Drupal\commerce_shipping\ShippingRate;
 use Drupal\commerce_shipping\ShippingService;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Rating;
-use function ob_start;
-use function var_export;
 
 /**
  * Provides the default Rating API integration services.
@@ -87,11 +85,22 @@ class RatingService implements RatingServiceInterface {
       $request = $this->getRequest();
       $response = $request->getRates($origin_postal_code, $postal_code, $weight, $options);
 
+      // Log the output buffer if we are in test mode.
+      if ($test_mode) {
+        $output = ob_get_contents();
+        ob_end_clean();
+
+        if (!empty($output)) {
+          $this->logger->info($output);
+        }
+      }
+
       if ($this->apiSettings['log']['request']) {
+        $response_output = print_r($response, TRUE);
         $message = sprintf(
           'Rating request made for order "%s". Response received: "%s".',
           $order->id(),
-          var_export($response)
+          $response_output
         );
         $this->logger->info($message);
       }
@@ -99,18 +108,13 @@ class RatingService implements RatingServiceInterface {
     catch (ClientException $exception) {
       if ($this->apiSettings['log']['response']) {
         $message = sprintf(
-          'An error has been returned by the Canada Post when fetching the shipping rates. The error was: "%s"',
+          'An error has been returned by the Canada Post shipment method when fetching the shipping rates. The error was: "%s"',
           json_encode($exception->getResponseBody())
         );
         $this->logger->error($message);
       }
 
-      return;
-    }
-
-    // Log the output buffer if we are in test mode.
-    if ($test_mode) {
-      $this->logger->info(var_export(ob_get_clean()));
+      return [];
     }
 
     return $this->parseResponse($response);
