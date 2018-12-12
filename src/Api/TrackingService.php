@@ -4,6 +4,7 @@ namespace Drupal\commerce_canadapost\Api;
 
 use CanadaPost\Exception\ClientException;
 use Drupal\commerce_canadapost\UtilitiesService;
+use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Tracking;
 
@@ -52,9 +53,10 @@ class TrackingService implements TrackingServiceInterface {
   /**
    * {@inheritdoc}
    */
-  public function fetchTrackingSummary($tracking_pin) {
+  public function fetchTrackingSummary($tracking_pin, ShipmentInterface $shipment) {
     // Fetch the Canada Post API settings first.
-    $this->apiSettings = $this->service->getApiSettings();
+    $store = $shipment->getOrder()->getStore();
+    $this->apiSettings = $this->service->getApiSettings($store);
 
     try {
       $tracking = $this->getRequest();

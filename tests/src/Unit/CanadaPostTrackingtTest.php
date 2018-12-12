@@ -4,7 +4,6 @@ namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use CanadaPost\Exception\ClientException;
 use CanadaPost\Tracking;
-use Drupal\commerce_canadapost\UtilitiesService;
 use Psr\Http\Message\RequestInterface;
 
 /**
@@ -14,33 +13,6 @@ use Psr\Http\Message\RequestInterface;
  * @group commerce_canadapost
  */
 class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
-
-  /**
-   * The Canada Post Utilities service object.
-   *
-   * @var \Drupal\commerce_canadapost\UtilitiesService
-   */
-  protected $service;
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setUp() {
-    parent::setUp();
-
-    $utilities_service = $this->prophesize(UtilitiesService::class);
-    $utilities_service->getApiSettings()->willReturn([
-      'customer_number' => 'mock_cn',
-      'username' => 'mock_name',
-      'password' => 'mock_pwd',
-      'contract_id' => '',
-      'rate.origin_postal_code' => '',
-      'mode' => 'test',
-      'log' => [],
-    ]);
-
-    $this->service = $utilities_service->reveal();
-  }
 
   /**
    * ::covers fetchTrackingSummary.
@@ -59,7 +31,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     $tracking_service->method('getRequest')->willReturn($request);
 
     // Now, test that the function has successfully returned rates.
-    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604');
+    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604', $this->shipment);
 
     $this->assertNotNull($tracking_summary);
     $this->assertArrayHasKey('pin', $tracking_summary);
@@ -89,7 +61,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     $tracking_service->method('getRequest')->willReturn($request);
 
     // Now, test that the function has successfully returned rates.
-    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604');
+    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604', $this->shipment);
 
     $this->assertEquals($tracking_summary, []);
   }
@@ -111,7 +83,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     $tracking_service->method('getRequest')->willReturn($request);
 
     // Now, test that the function has successfully returned rates.
-    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604');
+    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604', $this->shipment);
 
     $this->assertNull($tracking_summary);
   }
