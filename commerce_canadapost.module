@@ -79,6 +79,10 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
  * Implements hook_form_BASE_FORM_ID_alter().
  */
 function commerce_canadapost_form_commerce_checkout_flow_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if (!isset($form['shipping_information']['shipments'])) {
+    return;
+  }
+
   _commerce_canadapost_hide_tracking_fields($form);
 }
 
