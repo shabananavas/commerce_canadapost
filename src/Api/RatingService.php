@@ -85,16 +85,6 @@ class RatingService implements RatingServiceInterface {
       $request = $this->getRequest();
       $response = $request->getRates($origin_postal_code, $postal_code, $weight, $options);
 
-      // Log the output buffer if we are in test mode.
-      if ($test_mode) {
-        $output = ob_get_contents();
-        ob_end_clean();
-
-        if (!empty($output)) {
-          $this->logger->info($output);
-        }
-      }
-
       if ($this->apiSettings['log']['request']) {
         $response_output = var_export($response, TRUE);
         $message = sprintf(
@@ -104,6 +94,8 @@ class RatingService implements RatingServiceInterface {
         );
         $this->logger->info($message);
       }
+
+      $response = $this->parseResponse($response);
     }
     catch (ClientException $exception) {
       if ($this->apiSettings['log']['response']) {
@@ -114,10 +106,20 @@ class RatingService implements RatingServiceInterface {
         $this->logger->error($message);
       }
 
-      return [];
+      $response = [];
     }
 
-    return $this->parseResponse($response);
+    // Log the output buffer if we are in test mode.
+    if ($test_mode) {
+      $output = ob_get_contents();
+      ob_end_clean();
+
+      if (!empty($output)) {
+        $this->logger->info($output);
+      }
+    }
+
+    return $response;
   }
 
   /**

@@ -38,7 +38,10 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
       'contract_id' => '',
       'rate.origin_postal_code' => '',
       'mode' => 'test',
-      'log' => [],
+      'log' => [
+        'request' => FALSE,
+        'response' => FALSE,
+      ],
     ]);
 
     $this->service = $utilities_service->reveal();
@@ -117,7 +120,7 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
     // Now, test that the exception works correctly.
     $rates = $rating_service->getRates($this->shippingMethod, $this->shipment, []);
 
-    $this->assertNull($rates);
+    $this->assertEquals($rates, []);
   }
 
   /**

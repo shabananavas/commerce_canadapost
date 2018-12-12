@@ -66,16 +66,6 @@ class TrackingService implements TrackingServiceInterface {
       $tracking = $this->getRequest();
       $response = $tracking->getSummary($tracking_pin);
 
-      // Log the output buffer if we are in test mode.
-      if ($test_mode) {
-        $output = ob_get_contents();
-        ob_end_clean();
-
-        if (!empty($output)) {
-          $this->logger->info($output);
-        }
-      }
-
       if ($this->apiSettings['log']['request']) {
         $response_output = var_export($response, TRUE);
         $message = sprintf(
@@ -85,6 +75,8 @@ class TrackingService implements TrackingServiceInterface {
         );
         $this->logger->info($message);
       }
+
+      $response = $this->parseResponse($response);
     }
     catch (ClientException $exception) {
       if ($this->apiSettings['log']['response']) {
@@ -96,10 +88,20 @@ class TrackingService implements TrackingServiceInterface {
         $this->logger->error($message);
       }
 
-      return [];
+      $response = [];
     }
 
-    return $this->parseResponse($response);
+    // Log the output buffer if we are in test mode.
+    if ($test_mode) {
+      $output = ob_get_contents();
+      ob_end_clean();
+
+      if (!empty($output)) {
+        $this->logger->info($output);
+      }
+    }
+
+    return $response;
   }
 
   /**

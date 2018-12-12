@@ -36,7 +36,10 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
       'contract_id' => '',
       'rate.origin_postal_code' => '',
       'mode' => 'test',
-      'log' => [],
+      'log' => [
+        'request' => FALSE,
+        'response' => FALSE,
+      ],
     ]);
 
     $this->service = $utilities_service->reveal();
@@ -113,7 +116,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     // Now, test that the function has successfully returned rates.
     $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604');
 
-    $this->assertNull($tracking_summary);
+    $this->assertEquals($tracking_summary, []);
   }
 
   /**
