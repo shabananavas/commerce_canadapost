@@ -201,7 +201,7 @@ function _commerce_canadapost_update_tracking_data(array $order_ids = NULL) {
   foreach ($shipments as $shipment) {
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
     // Fetch tracking summary.
-    $tracking_summary = $tracking_service->fetchTrackingSummary($shipment->getTrackingCode());
+    $tracking_summary = $tracking_service->fetchTrackingSummary($shipment->getTrackingCode(), $shipment);
 
     // Update the shipment fields with the tracking data.
     $updated_order_ids[] = commerce_canadapost_update_tracking_fields($shipment, $tracking_summary);
