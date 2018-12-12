@@ -142,7 +142,7 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
 
   /** @var \Drupal\commerce_canadapost\Api\TrackingService $tracking_service */
   $tracking_service = \Drupal::service('commerce_canadapost.tracking_api');
-  $tracking_summary = $tracking_service->fetchTrackingSummary($submitted_tracking_pin);
+  $tracking_summary = $tracking_service->fetchTrackingSummary($submitted_tracking_pin, $shipment);
 
   $values = [];
   if (!empty($tracking_summary['actual-delivery-date'])) {
