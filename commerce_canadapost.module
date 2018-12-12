@@ -140,7 +140,7 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
   $tracking_service = \Drupal::service('commerce_canadapost.tracking_api');
   $tracking_summary = $tracking_service->fetchTrackingSummary($submitted_tracking_pin);
 
-  // Update the tracking fiels with the summary.
+  // Update the tracking fields with the summary.
   $values = [];
   if ($tracking_summary['actual-delivery-date'] != '') {
     $values['canadapost_actual_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['actual-delivery-date']);
