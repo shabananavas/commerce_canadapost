@@ -3,6 +3,7 @@
 namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use CommerceGuys\Addressing\AddressInterface;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
@@ -48,6 +49,13 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
   protected $shipment;
 
   /**
+   * The Canada Post Utilities service object.
+   *
+   * @var \Drupal\commerce_canadapost\UtilitiesService
+   */
+  protected $service;
+
+  /**
    * Set up requirements for test.
    */
   public function setUp() {
@@ -62,6 +70,24 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
       ->willReturn($logger->reveal());
 
     $this->loggerFactory = $logger_factory->reveal();
+
+    $store = $this->shipment->getOrder()->getStore();
+
+    $utilities_service = $this->prophesize(UtilitiesService::class);
+    $utilities_service->getApiSettings($store)->willReturn([
+      'customer_number' => 'mock_cn',
+      'username' => 'mock_name',
+      'password' => 'mock_pwd',
+      'contract_id' => '',
+      'rate.origin_postal_code' => '',
+      'mode' => 'test',
+      'log' => [
+        'request' => FALSE,
+        'response' => FALSE,
+      ],
+    ]);
+
+    $this->service = $utilities_service->reveal();
   }
 
   /**
