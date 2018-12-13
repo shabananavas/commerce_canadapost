@@ -3,11 +3,8 @@
 namespace Drupal\commerce_canadapost\Api;
 
 use Drupal\commerce_store\Entity\StoreInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 use Exception;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * CanadaPost API Service.
