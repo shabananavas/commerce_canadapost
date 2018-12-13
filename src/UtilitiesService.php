@@ -2,13 +2,16 @@
 
 namespace Drupal\commerce_canadapost;
 
+use Drupal\commerce_canadapost\Api\Request;
+use Drupal\commerce_canadapost\Api\TrackingServiceInterface;
+use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_store\Entity\StoreInterface;
+
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Link;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
-use function json_encode;
-use function json_decode;
 
 /**
  * Class UtilitiesService.
@@ -29,41 +32,45 @@ class UtilitiesService {
   protected $configFactory;
 
   /**
+   * The Tracking API service.
+   *
+   * @var \Drupal\commerce_canadapost\Api\TrackingServiceInterface
+   */
+  protected $trackingApi;
+
+  /**
+   * The Canada Post Request API service.
+   *
+   * @var \Drupal\commerce_canadapost\Api\RequestInterface
+   */
+  protected $requestApi;
+
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
    * Constructs a UtilitiesService class.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The config factory.
+   * @param \Drupal\commerce_canadapost\Api\TrackingServiceInterface $tracking_api
+   *   The Tracking API service.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    */
-  public function __construct(ConfigFactoryInterface $config_factory) {
+  public function __construct(
+    ConfigFactoryInterface $config_factory,
+    TrackingServiceInterface $tracking_api,
+    EntityTypeManagerInterface $entity_type_manager
+  ) {
     $this->configFactory = $config_factory;
-  }
-
-  /**
-   * Fetch the Canada Post API settings, first from the store then the site.
-   *
-   * @param \Drupal\commerce_store\Entity\StoreInterface $store
-   *   A store entity, if the api settings are for a store.
-   *
-   * @return array
-   *   An array of api settings.
-   */
-  public function getApiSettings(StoreInterface $store = NULL) {
-    // If we have store specific settings, return that.
-    if ($store && !empty($store->get('canadapost_api_settings')->getValue()[0]['value'])) {
-      $api_settings = $this->parseSettings(
-        $store->get('canadapost_api_settings')->getValue()[0]['value']
-      );
-    }
-    // Else, we fetch it from the sitewide settings.
-    else {
-      $config = $this->configFactory->get('commerce_canadapost.settings');
-
-      foreach ($this->getApiKeys() as $key) {
-        $api_settings[$key] = $config->get("api.$key");
-      }
-    }
-
-    return $api_settings;
+    $this->trackingApi = $tracking_api;
+    $this->requestApi = new Request();
+    $this->entityTypeManager = $entity_type_manager;
   }
 
   /**
@@ -76,7 +83,9 @@ class UtilitiesService {
    *   The encoded json object.
    */
   public function encodeSettings(array $values) {
-    foreach ($this->getApiKeys() as $key) {
+    $api_settings_values = [];
+
+    foreach ($this->requestApi->getApiKeys() as $key) {
       $api_settings_values[$key] = $values[$key];
     }
 
@@ -126,7 +135,7 @@ class UtilitiesService {
     }
 
     // Fetch the Canada Post API settings.
-    $api_settings = $this->getApiSettings($store);
+    $api_settings = $this->requestApi->getApiSettings($store);
 
     $form['api']['customer_number'] = [
       '#type' => 'textfield',
@@ -193,6 +202,128 @@ class UtilitiesService {
   }
 
   /**
+   * Update tracking data for all incomplete canadapost shipments.
+   *
+   * @param array $order_ids
+   *   An array of order IDs to update the tracking data for. Leave empty to
+   *   update all orders with incomplete shipments.
+   *
+   * @return array
+   *   An array of order IDs for which the shipments were updated for.
+   */
+  public function updateTracking(array $order_ids = NULL) {
+    $updated_order_ids = [];
+
+    // Fetch shipments for tracking.
+    $shipments = $this->fetchShipmentsForTracking($order_ids);
+
+    foreach ($shipments as $shipment) {
+      /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
+      // Fetch tracking summary.
+      $tracking_summary = $this->trackingApi->fetchTrackingSummary($shipment->getTrackingCode(), $shipment);
+
+      // Update the shipment fields with the tracking data.
+      $updated_order_ids[] = $this->updateTrackingFields($shipment, $tracking_summary);
+    }
+
+    return $updated_order_ids;
+  }
+
+  /**
+   * Hide the Canada Post tracking fields from the checkout form.
+   *
+   * @param array $form
+   *   The form array.
+   */
+  public function hideTrackingFields(array &$form) {
+    foreach ($form['shipping_information']['shipments'] as &$shipment) {
+      $fields = [
+        'canadapost_actual_delivery',
+        'canadapost_attempted_delivery',
+        'canadapost_expected_delivery',
+        'canadapost_mailed_on',
+        'canadapost_current_location',
+      ];
+      foreach ($fields as $field) {
+        if (isset($shipment[$field])) {
+          $shipment[$field]['#access'] = FALSE;
+        }
+      }
+    }
+  }
+
+  /**
+   * Fetch all incomplete canadapost shipments that have a tracking pin.
+   *
+   * @param array $order_ids
+   *   Only fetch shipments of specific order IDs.
+   *
+   * @return array
+   *   An array of shipment entities.
+   */
+  protected function fetchShipmentsForTracking(array $order_ids = NULL) {
+    // Query the db for the incomplete shipments.
+    $shipment_query = $this->entityTypeManager
+      ->getStorage('commerce_shipment')
+      ->getQuery();
+    $shipment_query
+      ->condition('type', 'canadapost')
+      ->condition('state', 'completed', '!=')
+      ->condition('tracking_code', NULL, 'IS NOT NULL');
+    // If specific order IDs have been passed.
+    if (!empty($order_ids)) {
+      $shipment_query->condition('order_id', $order_ids, 'IN');
+    }
+    // Fetch the results.
+    $shipment_ids = $shipment_query->execute();
+
+    // Return the loaded shipment entities.
+    return $this->entityTypeManager
+      ->getStorage('commerce_shipment')
+      ->loadMultiple($shipment_ids);
+  }
+
+  /**
+   * Update the shipment fields with the tracking summary.
+   *
+   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment
+   *   The commerce shipment.
+   * @param array $tracking_summary
+   *   The tracking summary from Canada Post.
+   *
+   * @return int
+   *   The order ID for which the shipment was updated for.
+   */
+  protected function updateTrackingFields(ShipmentInterface $shipment, array $tracking_summary) {
+    // Update the fields.
+    if ($tracking_summary['actual-delivery-date'] != '') {
+      $shipment->set('canadapost_actual_delivery', $tracking_summary['actual-delivery-date']);
+    }
+
+    if ($tracking_summary['attempted-date'] != '') {
+      $shipment->set('canadapost_attempted_delivery', $tracking_summary['attempted-date']);
+    }
+
+    if ($tracking_summary['expected-delivery-date'] != '') {
+      $shipment->set('canadapost_expected_delivery', $tracking_summary['expected-delivery-date']);
+    }
+
+    if ($tracking_summary['mailed-on-date'] != '') {
+      $shipment->set('canadapost_mailed_on', $tracking_summary['mailed-on-date']);
+    }
+
+    if ($tracking_summary['event-location'] != '') {
+      $shipment->set('canadapost_current_location', $tracking_summary['event-location']);
+    }
+
+    // Now, save the shipment.
+    $shipment->save();
+
+    // Return the order ID for this updated shipment.
+    return $shipment->getOrderId();
+  }
+
+  /**
    * Alter the Canada Post API settings form fields if we're in the store form.
    *
    * @param array $form
@@ -213,7 +344,7 @@ class UtilitiesService {
         ],
       ],
     ];
-    foreach ($this->getApiKeys() as $key) {
+    foreach ($this->requestApi->getApiKeys() as $key) {
       $form['api'][$key]['#states'] = $states;
       $form['api'][$key]['#required'] = FALSE;
     }
@@ -222,36 +353,6 @@ class UtilitiesService {
     // well.
     unset($form['api']['contract_id']['#states']['required']);
     unset($form['api']['log']['#states']['required']);
-  }
-
-  /**
-   * Return the Canada Post API keys.
-   *
-   * @return array
-   *   An array of API setting keys.
-   */
-  protected function getApiKeys() {
-    return [
-      'customer_number',
-      'username',
-      'password',
-      'contract_id',
-      'mode',
-      'log',
-    ];
-  }
-
-  /**
-   * Parse the Canada Post API settings stored as json in the store entity.
-   *
-   * @param object $api_settings
-   *   The json encoded Canada Post api settings.
-   *
-   * @return array
-   *   An array of values extracted from the json object.
-   */
-  protected function parseSettings($api_settings) {
-    return json_decode($api_settings, TRUE);
   }
 
 }

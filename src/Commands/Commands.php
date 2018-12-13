@@ -2,11 +2,8 @@
 
 namespace Drupal\commerce_canadapost\Commands;
 
-use Drupal\commerce_canadapost\Api\RatingServiceInterface;
-use Drupal\commerce_canadapost\Api\TrackingServiceInterface;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drush\Commands\DrushCommands;
-use function explode;
-use function implode;
 
 /**
  * Drush commands for the Commerce Canada Post module.
@@ -14,20 +11,20 @@ use function implode;
 class Commands extends DrushCommands {
 
   /**
-   * The Tracking API service.
+   * The Canada Post utilities service object.
    *
-   * @var \Drupal\commerce_canadapost\Api\TrackingServiceInterface
+   * @var \Drupal\commerce_canadapost\UtilitiesService
    */
-  protected $trackingApi;
+  protected $service;
 
   /**
    * Constructs a new Commands object.
    *
-   * @param \Drupal\commerce_canadapost\Api\TrackingServiceInterface $tracking_api
-   *   The Tracking API service.
+   * @param \Drupal\commerce_canadapost\UtilitiesService $service
+   *   The Canada Post utilities service object.
    */
-  public function __construct(RatingServiceInterface $service_api, TrackingServiceInterface $tracking_api) {
-    $this->trackingApi = $tracking_api;
+  public function __construct(UtilitiesService $service) {
+    $this->service = $service;
   }
 
   /**
@@ -48,7 +45,7 @@ class Commands extends DrushCommands {
     }
 
     // Update the tracking.
-    $updated_order_ids = _commerce_canadapost_update_tracking_data($order_ids);
+    $updated_order_ids = $this->service->updateTracking($order_ids);
 
     $this->logger()->success(dt(
       'Updated tracking for the following orders: @order_ids.', [

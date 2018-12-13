@@ -5,7 +5,6 @@
  * Provides functionality for the Commerce Canada Post module.
  */
 
-use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -75,7 +74,8 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
     return;
   }
 
-  _commerce_canadapost_hide_tracking_fields($form);
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $utilities_service->hideTrackingFields($form);
 }
 
 /**
@@ -86,7 +86,8 @@ function commerce_canadapost_form_commerce_checkout_flow_alter(&$form, FormState
     return;
   }
 
-  _commerce_canadapost_hide_tracking_fields($form);
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $utilities_service->hideTrackingFields($form);
 }
 
 /**
@@ -121,6 +122,16 @@ function commerce_canadapost_form_commerce_store_form_alter(&$form, FormStateInt
   $form += $utilities_service->buildApiForm($store);
 
   $form['actions']['submit']['#submit'][] = 'commerce_canadapost_form_commerce_store_form_submit';
+}
+
+/**
+ * Implements hook_cron().
+ */
+function commerce_canadapost_cron() {
+  // Update tracking data for all incomplete canadapost shipments with a
+  // tracking code.
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $utilities_service->updateTracking();
 }
 
 /**
@@ -174,119 +185,6 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
 }
 
 /**
- * Implements hook_cron().
- */
-function commerce_canadapost_cron() {
-  // Update tracking data for all incomplete canadapost shipments with a
-  // tracking code.
-  _commerce_canadapost_update_tracking_data();
-}
-
-/**
- * Update tracking data for all incomplete canadapost shipments.
- *
- * @param array $order_ids
- *   An array of order IDs to update the tracking data for. Leave empty to
- *   update all orders with incomplete shipments.
- *
- * @return array
- *   An array of order IDs for which the shipments were updated for.
- */
-function _commerce_canadapost_update_tracking_data(array $order_ids = NULL) {
-  $updated_order_ids = [];
-
-  /** @var \Drupal\commerce_canadapost\Api\TrackingService $tracking_service */
-  $tracking_service = \Drupal::service('commerce_canadapost.tracking_api');
-
-  // Fetch shipments for tracking.
-  $shipments = _commerce_canadapost_fetch_shipments_for_tracking($order_ids);
-
-  foreach ($shipments as $shipment) {
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
-    // Fetch tracking summary.
-    $tracking_summary = $tracking_service->fetchTrackingSummary($shipment->getTrackingCode(), $shipment);
-
-    // Update the shipment fields with the tracking data.
-    $updated_order_ids[] = commerce_canadapost_update_tracking_fields($shipment, $tracking_summary);
-  }
-
-  return $updated_order_ids;
-}
-
-/**
- * Fetch all incomplete canadapost shipments that have a tracking pin.
- *
- * @param array $order_ids
- *   Only fetch shipments of specific order IDs.
- *
- * @return array
- *   An array of shipment entities.
- */
-function _commerce_canadapost_fetch_shipments_for_tracking(array $order_ids = NULL) {
-  $entity_type_manager = \Drupal::entityTypeManager();
-
-  // Query the db for the incomplete shipments.
-  $shipment_query = $entity_type_manager
-    ->getStorage('commerce_shipment')
-    ->getQuery();
-  $shipment_query
-    ->condition('type', 'canadapost')
-    ->condition('state', 'completed', '!=')
-    ->condition('tracking_code', NULL, 'IS NOT NULL');
-  // If specific order IDs have been passed.
-  if (!empty($order_ids)) {
-    $shipment_query->condition('order_id', $order_ids, 'IN');
-  }
-  // Fetch the results.
-  $shipment_ids = $shipment_query->execute();
-
-  // Return the loaded shipment entities.
-  return $entity_type_manager
-    ->getStorage('commerce_shipment')
-    ->loadMultiple($shipment_ids);
-}
-
-/**
- * Update the shipment fields with the tracking summary.
- *
- * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment
- *   The commerce shipment.
- * @param array $tracking_summary
- *   The tracking summary from Canada Post.
- *
- * @return int
- *   The order ID for which the shipment was updated for.
- */
-function commerce_canadapost_update_tracking_fields(ShipmentInterface $shipment, array $tracking_summary) {
-  // Update the fields.
-  if ($tracking_summary['actual-delivery-date'] != '') {
-    $shipment->set('canadapost_actual_delivery', $tracking_summary['actual-delivery-date']);
-  }
-
-  if ($tracking_summary['attempted-date'] != '') {
-    $shipment->set('canadapost_attempted_delivery', $tracking_summary['attempted-date']);
-  }
-
-  if ($tracking_summary['expected-delivery-date'] != '') {
-    $shipment->set('canadapost_expected_delivery', $tracking_summary['expected-delivery-date']);
-  }
-
-  if ($tracking_summary['mailed-on-date'] != '') {
-    $shipment->set('canadapost_mailed_on', $tracking_summary['mailed-on-date']);
-  }
-
-  if ($tracking_summary['event-location'] != '') {
-    $shipment->set('canadapost_current_location', $tracking_summary['event-location']);
-  }
-
-  // Now, save the shipment.
-  $shipment->save();
-
-  // Return the order ID for this updated shipment.
-  return $shipment->getOrderId();
-}
-
-/**
  * Form submit for the commerce_store entity form.
  */
 function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInterface $form_state) {
@@ -309,27 +207,4 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
   }
 
   $store->save();
-}
-
-/**
- * Hide the Canada Post tracking fields from the checkout form.
- *
- * @param array $form
- *   The form array.
- */
-function _commerce_canadapost_hide_tracking_fields(array &$form) {
-  foreach ($form['shipping_information']['shipments'] as &$shipment) {
-    $fields = [
-      'canadapost_actual_delivery',
-      'canadapost_attempted_delivery',
-      'canadapost_expected_delivery',
-      'canadapost_mailed_on',
-      'canadapost_current_location',
-    ];
-    foreach ($fields as $field) {
-      if (isset($shipment[$field])) {
-        $shipment[$field]['#access'] = FALSE;
-      }
-    }
-  }
 }

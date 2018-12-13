@@ -6,11 +6,13 @@ use Drupal\commerce_canadapost\Api\RatingServiceInterface;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\PackageTypeManagerInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodBase;
+
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+
 use CanadaPost\Rating;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides the Canada Post shipping method.
@@ -147,7 +149,7 @@ class CanadaPost extends ShippingMethodBase {
     $form['api']['info'] = [
       '#type' => 'markup',
       '#markup' => $this->t(
-        'Canada Post API settings can be added per store or can be configured to be used sitewide. Please @action your @link here.',
+        'Canada Post API settings can be configured to be used sitewide or can be configured per store as well. Please @action your @link here.',
         [
           '@action' => $this->apiIsConfigured() ? 'review' : 'enter',
           '@link' => Link::createFromRoute(
