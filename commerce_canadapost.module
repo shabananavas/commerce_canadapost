@@ -174,8 +174,7 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
   // Grab the form values.
   $form_values = $form_state->getValues();
 
-  // If the user has opted to create Canada Post API settings for this store,
-  // save it to the store, so that that will be used for this store.
+  // If the user has opted to create Canada Post API settings for this store.
   if ($form_values['use_sitewide_settings'] == FALSE) {
     $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
 
@@ -183,7 +182,7 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
     $store->set('canadapost_api_settings', $json_encoded_settings);
   }
   // Else, we empty the store settings so that the sitewide settings will be
-  // used for this store.
+  // used instead.
   else {
     $store->set('canadapost_api_settings', NULL);
   }
