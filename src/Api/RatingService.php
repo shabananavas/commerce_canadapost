@@ -17,21 +17,18 @@ use CanadaPost\Rating;
 class RatingService extends Request implements RatingServiceInterface {
 
   /**
-   * The Canada Post API settings.
-   *
-   * @var array
-   */
-  protected $apiSettings;
-
-  /**
    * {@inheritdoc}
    */
-  public function getRates(ShippingMethodInterface $shipping_method, ShipmentInterface $shipment, array $options) {
+  public function getRates(
+    ShippingMethodInterface $shipping_method,
+    ShipmentInterface $shipment,
+    array $options
+  ) {
     $order = $shipment->getOrder();
     $store = $order->getStore();
 
-    // Fetch the Canada Post API settings first.
-    $this->apiSettings = $this->getApiSettings($store);
+    // Set the Canada Post API settings first.
+    $this->setApiSettings($store);
 
     $origin_postal_code = !empty($shipping_method->getConfiguration()['shipping_information']['origin_postal_code'])
       ? $shipping_method->getConfiguration()['shipping_information']['origin_postal_code']
@@ -51,8 +48,7 @@ class RatingService extends Request implements RatingServiceInterface {
         ob_start();
       }
 
-      $config = $this->getRequestConfig($this->apiSettings);
-      $rating = new Rating($config);
+      $rating = $this->getRequest();
       $response = $rating->getRates($origin_postal_code, $postal_code, $weight, $options);
 
       if ($this->apiSettings['log']['request']) {
@@ -90,6 +86,18 @@ class RatingService extends Request implements RatingServiceInterface {
     }
 
     return $response;
+  }
+
+  /**
+   * Returns an initialized Canada Post Rating service.
+   *
+   * @return \CanadaPost\Rating
+   *   The rating service class.
+   */
+  protected function getRequest() {
+    $config = $this->getRequestConfig($this->apiSettings);
+
+    return new Rating($config);
   }
 
   /**

@@ -13,19 +13,12 @@ use CanadaPost\Tracking;
 class TrackingService extends Request implements TrackingServiceInterface {
 
   /**
-   * The Canada Post API settings.
-   *
-   * @var array
-   */
-  protected $apiSettings;
-
-  /**
    * {@inheritdoc}
    */
   public function fetchTrackingSummary($tracking_pin, ShipmentInterface $shipment) {
     // Fetch the Canada Post API settings first.
     $store = $shipment->getOrder()->getStore();
-    $this->apiSettings = $this->getApiSettings($store);
+    $this->setApiSettings($store);
 
     try {
       // Turn on output buffering if we are in test mode.
@@ -34,8 +27,7 @@ class TrackingService extends Request implements TrackingServiceInterface {
         ob_start();
       }
 
-      $config = $this->getRequestConfig($this->apiSettings);
-      $tracking = new Tracking($config);
+      $tracking = $this->getRequest();
       $response = $tracking->getSummary($tracking_pin);
 
       if ($this->apiSettings['log']['request']) {
@@ -74,6 +66,18 @@ class TrackingService extends Request implements TrackingServiceInterface {
     }
 
     return $response;
+  }
+
+  /**
+   * Returns an initialized Canada Post Tracking service.
+   *
+   * @return \CanadaPost\Tracking
+   *   The tracking service class.
+   */
+  protected function getRequest() {
+    $config = $this->getRequestConfig($this->apiSettings);
+
+    return new Tracking($config);
   }
 
   /**

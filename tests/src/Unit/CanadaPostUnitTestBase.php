@@ -3,8 +3,10 @@
 namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use CommerceGuys\Addressing\AddressInterface;
-use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\ImmutableConfig;
+use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Tests\UnitTestCase;
@@ -17,6 +19,7 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\PackageType\PackageTypeInterface;
 use Drupal\commerce_store\Entity\StoreInterface;
+use Drupal\text\Plugin\Field\FieldType\TextLongItem;
 
 define('COMMERCE_CANADAPOST_LOGGER_CHANNEL', 'commerce_canadapost');
 
@@ -26,13 +29,6 @@ define('COMMERCE_CANADAPOST_LOGGER_CHANNEL', 'commerce_canadapost');
  * @package Drupal\Tests\commerce_canadapost\Unit
  */
 abstract class CanadaPostUnitTestBase extends UnitTestCase {
-
-  /**
-   * The logger channel factory.
-   *
-   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
-   */
-  protected $loggerFactory;
 
   /**
    * The shipping method interface.
@@ -49,13 +45,6 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
   protected $shipment;
 
   /**
-   * The Canada Post Utilities service object.
-   *
-   * @var \Drupal\commerce_canadapost\UtilitiesService
-   */
-  protected $service;
-
-  /**
    * Set up requirements for test.
    */
   public function setUp() {
@@ -68,26 +57,21 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
     $logger = $this->prophesize(LoggerChannelInterface::class);
     $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL)
       ->willReturn($logger->reveal());
+    $logger_factory = $logger_factory->reveal();
 
-    $this->loggerFactory = $logger_factory->reveal();
+    $config_factory = $this->prophesize(ConfigFactoryInterface::class);
+    $config = $this->prophesize(ImmutableConfig::class);
+    $sitewide_settings = $this->getSiteWideApiSettings();
+    foreach ($sitewide_settings as $key => $value) {
+      $config->get("api.$key")->willReturn($value);
+    }
+    $config_factory->get('commerce_canadapost.settings')->willReturn($config);
+    $config_factory = $config_factory->reveal();
 
-    $store = $this->shipment->getOrder()->getStore();
-
-    $utilities_service = $this->prophesize(UtilitiesService::class);
-    $utilities_service->getApiSettings($store)->willReturn([
-      'customer_number' => 'mock_cn',
-      'username' => 'mock_name',
-      'password' => 'mock_pwd',
-      'contract_id' => '',
-      'rate.origin_postal_code' => '',
-      'mode' => 'test',
-      'log' => [
-        'request' => FALSE,
-        'response' => FALSE,
-      ],
-    ]);
-
-    $this->service = $utilities_service->reveal();
+    $container = new ContainerBuilder();
+    $container->set('logger.factory', $logger_factory);
+    $container->set('config.factory', $config_factory);
+    \Drupal::setContainer($container);
   }
 
   /**
@@ -100,6 +84,16 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
     // Mock a Drupal Commerce Order and associated objects.
     $order = $this->prophesize(OrderInterface::class);
     $store = $this->prophesize(StoreInterface::class);
+
+    // Mock the store API settings.
+    $api_settings = $this->prophesize(TextLongItem::class);
+    $encoded_api_settings = json_encode($this->getStoreApiSettings());
+    $api_settings->getValue()->willReturn([
+      0 => [
+        'value' => $encoded_api_settings,
+      ],
+    ]);
+    $store->get('canadapost_api_settings')->willReturn($api_settings);
 
     // Mock the getAddress method to return a Canadian address.
     $store->getAddress()
@@ -148,6 +142,48 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
     ]);
 
     return $shipping_method->reveal();
+  }
+
+  /**
+   * Returns an array of mock Canada Post API settings.
+   *
+   * @return array
+   *   The API settings.
+   */
+  protected function getSiteWideApiSettings() {
+    return [
+      'customer_number' => 'sitewide_mock_cn',
+      'username' => 'sitewide_mock_name',
+      'password' => 'sitewide_mock_pwd',
+      'contract_id' => '',
+      'rate.origin_postal_code' => '',
+      'mode' => 'test',
+      'log' => [
+        'request' => FALSE,
+        'response' => FALSE,
+      ],
+    ];
+  }
+
+  /**
+   * Returns an array of mock Canada Post API settings.
+   *
+   * @return array
+   *   The API settings.
+   */
+  protected function getStoreApiSettings() {
+    return [
+      'customer_number' => 'store_mock_cn',
+      'username' => 'store_mock_name',
+      'password' => 'store_mock_pwd',
+      'contract_id' => '',
+      'rate.origin_postal_code' => '',
+      'mode' => 'live',
+      'log' => [
+        'request' => FALSE,
+        'response' => FALSE,
+      ],
+    ];
   }
 
 }

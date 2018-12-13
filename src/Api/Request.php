@@ -14,6 +14,13 @@ use Exception;
 class Request implements RequestInterface {
 
   /**
+   * The Canada Post API settings.
+   *
+   * @var array
+   */
+  protected $apiSettings;
+
+  /**
    * The config factory.
    *
    * @var \Drupal\Core\Config\ConfigFactoryInterface
@@ -38,7 +45,7 @@ class Request implements RequestInterface {
   /**
    * {@inheritdoc}
    */
-  public function getApiSettings(StoreInterface $store = NULL) {
+  public function setApiSettings(StoreInterface $store = NULL) {
     $api_settings = [];
 
     // If we have store specific settings, return that.
@@ -56,26 +63,28 @@ class Request implements RequestInterface {
       }
     }
 
-    return $api_settings;
+    $this->apiSettings = $api_settings;
+
+    return $this->apiSettings;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getRequestConfig(array $api_settings) {
+  public function getRequestConfig() {
     // Verify necessary configuration is available.
-    if (empty($api_settings['username'])
-      || empty($api_settings['password'])
-      || empty($api_settings['customer_number'])) {
+    if (empty($this->apiSettings['username'])
+      || empty($this->apiSettings['password'])
+      || empty($this->apiSettings['customer_number'])) {
       throw new Exception('Configuration is required.');
     }
 
     $config = [
-      'username' => $api_settings['username'],
-      'password' => $api_settings['password'],
-      'customer_number' => $api_settings['customer_number'],
-      'contract_id' => $api_settings['contract_id'],
-      'env' => $this->getEnvironmentMode($api_settings),
+      'username' => $this->apiSettings['username'],
+      'password' => $this->apiSettings['password'],
+      'customer_number' => $this->apiSettings['customer_number'],
+      'contract_id' => $this->apiSettings['contract_id'],
+      'env' => $this->getEnvironmentMode(),
     ];
 
     return $config;
@@ -98,14 +107,11 @@ class Request implements RequestInterface {
   /**
    * Convert the environment mode to the correct format for the SDK.
    *
-   * @param array $api_settings
-   *   The Canada Post API settings.
-   *
    * @return string
    *   The environment mode (prod/dev).
    */
-  protected function getEnvironmentMode(array $api_settings) {
-    return $api_settings['mode'] === 'live' ? 'prod' : 'dev';
+  protected function getEnvironmentMode() {
+    return $this->apiSettings['mode'] === 'live' ? 'prod' : 'dev';
   }
 
   /**

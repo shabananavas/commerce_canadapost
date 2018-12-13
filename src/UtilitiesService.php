@@ -135,7 +135,7 @@ class UtilitiesService {
     }
 
     // Fetch the Canada Post API settings.
-    $api_settings = $this->requestApi->getApiSettings($store);
+    $api_settings = $this->requestApi->setApiSettings($store);
 
     $form['api']['customer_number'] = [
       '#type' => 'textfield',
