@@ -171,6 +171,19 @@ class UtilitiesService {
       '#default_value' => $api_settings['log'],
     ];
 
+    // Add a note about store specific settings if we are in the sitewide page.
+    if (!$store) {
+      $form['api']['note'] = [
+        '#type' => 'item',
+        '#markup' => $this->t('<strong>To configure Canada Post API settings per store, go to the @url, edit the store, and add the account details there.</strong>', [
+          '@url' => Link::fromTextAndUrl(
+            $this->t('store settings page'),
+            Url::fromRoute('entity.commerce_store.collection')
+          )->toString(),
+        ]),
+      ];
+    }
+
     // Alter the fields if we're in the store form.
     if ($store) {
       $this->alterApiFormFields($form);
