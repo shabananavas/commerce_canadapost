@@ -2,57 +2,19 @@
 
 namespace Drupal\commerce_canadapost\Api;
 
-use CanadaPost\Exception\ClientException;
-use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterface;
 use Drupal\commerce_shipping\ShippingRate;
 use Drupal\commerce_shipping\ShippingService;
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+
+use CanadaPost\Exception\ClientException;
 use CanadaPost\Rating;
 
 /**
  * Provides the default Rating API integration services.
  */
-class RatingService implements RatingServiceInterface {
-
-  /**
-   * The Canada Post utilities service object.
-   *
-   * @var \Drupal\commerce_canadapost\UtilitiesService
-   */
-  protected $service;
-
-  /**
-   * The logger channel factory.
-   *
-   * @var \Drupal\Core\Logger\LoggerChannelInterface
-   */
-  protected $logger;
-
-  /**
-   * The Canada Post API settings.
-   *
-   * @var array
-   */
-  protected $apiSettings;
-
-  /**
-   * Constructs a new TrackingService object.
-   *
-   * @param \Drupal\commerce_canadapost\UtilitiesService $service
-   *   The Canada Post utilities service object.
-   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
-   *   The logger channel factory.
-   */
-  public function __construct(
-    UtilitiesService $service,
-    LoggerChannelFactoryInterface $logger_factory
-  ) {
-    $this->service = $service;
-    $this->logger = $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
-  }
+class RatingService extends Request implements RatingServiceInterface {
 
   /**
    * {@inheritdoc}
@@ -62,11 +24,11 @@ class RatingService implements RatingServiceInterface {
     $store = $order->getStore();
 
     // Fetch the Canada Post API settings first.
-    $this->apiSettings = $this->service->getApiSettings($store);
+    $api_settings = $this->getApiSettings($store, $shipping_method);
 
     $origin_postal_code = !empty($shipping_method->getConfiguration()['shipping_information']['origin_postal_code'])
       ? $shipping_method->getConfiguration()['shipping_information']['origin_postal_code']
-      : $order->getStore()
+      : $store
         ->getAddress()
         ->getPostalCode();
     $postal_code = $shipment->getShippingProfile()
@@ -76,8 +38,8 @@ class RatingService implements RatingServiceInterface {
     $weight = $shipment->getWeight()->convert('kg')->getNumber();
 
     try {
-      $request = $this->getRequest();
-      $response = $request->getRates($origin_postal_code, $postal_code, $weight, $options);
+      $rating = $this->getRequest($api_settings);
+      $response = $rating->getRates($origin_postal_code, $postal_code, $weight, $options);
     }
     catch (ClientException $exception) {
       $message = sprintf(
@@ -85,6 +47,7 @@ class RatingService implements RatingServiceInterface {
         json_encode($exception->getResponseBody())
       );
       $this->logger->error($message);
+
       return;
     }
 
@@ -92,28 +55,18 @@ class RatingService implements RatingServiceInterface {
   }
 
   /**
-   * Returns a Canada Post request service api.
+   * Returns an initialized Canada Post Rating service.
+   *
+   * @param array $api_settings
+   *   The Canada Post API settings.
    *
    * @return \CanadaPost\Rating
-   *   The Canada Post request service object.
+   *   The rating service class.
    */
-  protected function getRequest() {
-    $config = [
-      'username' => $this->apiSettings['username'],
-      'password' => $this->apiSettings['password'],
-      'customer_number' => $this->apiSettings['customer_number'],
-      'contract_id' => $this->apiSettings['contract_id'],
-      'env' => $this->getEnvironmentMode(),
-    ];
+  protected function getRequest(array $api_settings) {
+    $config = $this->getRequestConfig($api_settings);
 
     return new Rating($config);
-  }
-
-  /**
-   * Convert the environment mode to the correct format for the SDK.
-   */
-  private function getEnvironmentMode() {
-    return $this->apiSettings['mode'] === 'live' ? 'prod' : 'dev';
   }
 
   /**

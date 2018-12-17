@@ -2,13 +2,13 @@
 
 namespace Drupal\commerce_canadapost;
 
+use Drupal\commerce_canadapost\Api\Request;
+use Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost;
 use Drupal\commerce_store\Entity\StoreInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
+
 use Drupal\Core\Link;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
-use function json_encode;
-use function json_decode;
 
 /**
  * Class UtilitiesService.
@@ -17,77 +17,17 @@ use function json_decode;
  *
  * @package Drupal\commerce_canadapost
  */
-class UtilitiesService {
+class UtilitiesService extends Request {
 
   use StringTranslationTrait;
-
-  /**
-   * The config factory.
-   *
-   * @var \Drupal\Core\Config\ConfigFactoryInterface
-   */
-  protected $configFactory;
-
-  /**
-   * Constructs a UtilitiesService class.
-   *
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The config factory.
-   */
-  public function __construct(ConfigFactoryInterface $config_factory) {
-    $this->configFactory = $config_factory;
-  }
-
-  /**
-   * Fetch the Canada Post API settings, first from the store then the site.
-   *
-   * @param \Drupal\commerce_store\Entity\StoreInterface $store
-   *   A store entity, if the api settings are for a store.
-   *
-   * @return array
-   *   An array of api settings.
-   */
-  public function getApiSettings(StoreInterface $store = NULL) {
-    // If we have store specific settings, return that.
-    if ($store && !empty($store->get('canadapost_api_settings')->getValue()[0]['value'])) {
-      $api_settings = $this->parseSettings(
-        $store->get('canadapost_api_settings')->getValue()[0]['value']
-      );
-    }
-    // Else, we fetch it from the sitewide settings.
-    else {
-      $config = $this->configFactory->get('commerce_canadapost.settings');
-
-      foreach ($this->getApiKeys() as $key) {
-        $api_settings[$key] = $config->get("api.$key");
-      }
-    }
-
-    return $api_settings;
-  }
-
-  /**
-   * Encode the Canada Post API settings values in a json object.
-   *
-   * @param array $values
-   *   The form_state values with the Canada Post API settings.
-   *
-   * @return object
-   *   The encoded json object.
-   */
-  public function encodeSettings(array $values) {
-    foreach ($this->getApiKeys() as $key) {
-      $api_settings_values[$key] = $values[$key];
-    }
-
-    return json_encode($api_settings_values);
-  }
 
   /**
    * Build the form fields for the Canada Post API settings.
    *
    * @param \Drupal\commerce_store\Entity\StoreInterface $store
    *   A store entity, if the api settings are for a store.
+   * @param \Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost $shipping_method
+   *   The Canada Post shipping method.
    *
    * @return array
    *   An array of form fields.
@@ -95,7 +35,7 @@ class UtilitiesService {
    * @see \Drupal\commerce_canadapost\Form::buildForm()
    * @see \commerce_canadapost_form_alter()
    */
-  public function buildApiForm(StoreInterface $store = NULL) {
+  public function buildApiForm(StoreInterface $store = NULL, CanadaPost $shipping_method = NULL) {
     $form = [];
 
     $form['api'] = [
@@ -104,20 +44,20 @@ class UtilitiesService {
       '#open' => TRUE,
     ];
 
-    // Display an option to use the sitewide settings or have specific
+    // Display an option to use the shipping method settings or have specific
     // settings for this store.
     if ($store) {
       $store_settings_set = empty($store->get('canadapost_api_settings')
         ->getValue()[0]['value']);
 
-      $form['api']['use_sitewide_settings'] = [
+      $form['api']['use_shipping_method_settings'] = [
         '#type' => 'checkbox',
-        '#title' => $this->t('Use Canada Post sitewide API settings'),
+        '#title' => $this->t('Use Canada Post shipping method API settings'),
         '#description' => $this->t('The Canada Post @url will be used when fetching rates and tracking details.
           <br \><strong>Uncheck</strong> this box if you\'d like to use a different account when fetching rates and tracking details for orders from this store.', [
             '@url' => Link::fromTextAndUrl(
-              $this->t('sitewide API settings'),
-              Url::fromRoute('commerce_canadapost.settings_form')
+              $this->t('shipping method API settings'),
+              Url::fromRoute('entity.commerce_shipping_method.collection')
             )->toString(),
           ]
         ),
@@ -126,7 +66,7 @@ class UtilitiesService {
     }
 
     // Fetch the Canada Post API settings.
-    $api_settings = $this->getApiSettings($store);
+    $api_settings = $this->getApiSettings($store, $shipping_method);
 
     $form['api']['customer_number'] = [
       '#type' => 'textfield',
@@ -171,11 +111,12 @@ class UtilitiesService {
       '#default_value' => $api_settings['log'],
     ];
 
-    // Add a note about store specific settings if we are in the sitewide page.
+    // Add a note about store specific settings if we are in the shipping method
+    // page.
     if (!$store) {
       $form['api']['note'] = [
         '#type' => 'item',
-        '#markup' => $this->t('<strong>To configure Canada Post API settings per store, go to the @url, edit the store, and add the account details there.</strong>', [
+        '#markup' => $this->t('<strong>To configure Canada Post API settings per store, go to the @url, edit the store, and add the account details there.<br \> Store API settings, if set, will be given preference when fetching rate and tracking details.</strong>', [
           '@url' => Link::fromTextAndUrl(
             $this->t('store settings page'),
             Url::fromRoute('entity.commerce_store.collection')
@@ -193,6 +134,23 @@ class UtilitiesService {
   }
 
   /**
+   * Encode the Canada Post API settings values in a json object.
+   *
+   * @param array $values
+   *   The form_state values with the Canada Post API settings.
+   *
+   * @return object
+   *   The encoded json object.
+   */
+  public function encodeSettings(array $values) {
+    foreach ($this->getApiKeys() as $key) {
+      $api_settings_values[$key] = $values[$key];
+    }
+
+    return json_encode($api_settings_values);
+  }
+
+  /**
    * Alter the Canada Post API settings form fields if we're in the store form.
    *
    * @param array $form
@@ -203,12 +161,12 @@ class UtilitiesService {
     // unchecked.
     $states = [
       'visible' => [
-        ':input[name="use_sitewide_settings"]' => [
+        ':input[name="use_shipping_method_settings"]' => [
           'checked' => FALSE,
         ],
       ],
       'required' => [
-        ':input[name="use_sitewide_settings"]' => [
+        ':input[name="use_shipping_method_settings"]' => [
           'checked' => FALSE,
         ],
       ],
@@ -222,36 +180,6 @@ class UtilitiesService {
     // well.
     unset($form['api']['contract_id']['#states']['required']);
     unset($form['api']['log']['#states']['required']);
-  }
-
-  /**
-   * Return the Canada Post API keys.
-   *
-   * @return array
-   *   An array of API setting keys.
-   */
-  protected function getApiKeys() {
-    return [
-      'customer_number',
-      'username',
-      'password',
-      'contract_id',
-      'mode',
-      'log',
-    ];
-  }
-
-  /**
-   * Parse the Canada Post API settings stored as json in the store entity.
-   *
-   * @param object $api_settings
-   *   The json encoded Canada Post api settings.
-   *
-   * @return array
-   *   An array of values extracted from the json object.
-   */
-  protected function parseSettings($api_settings) {
-    return json_decode($api_settings, TRUE);
   }
 
 }

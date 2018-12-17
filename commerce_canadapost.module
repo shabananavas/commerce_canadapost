@@ -90,26 +90,32 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
  * Implements hook_entity_base_field_info().
  */
 function commerce_canadapost_entity_base_field_info(EntityTypeInterface $entity_type) {
-  if ($entity_type->id() === 'commerce_store') {
-    $fields['canadapost_api_settings'] = BaseFieldDefinition::create('string_long')
-      ->setLabel(t('Canada Post API Settings'))
-      ->setDisplayOptions('view', [
-        'region' => 'hidden',
-      ])
-      ->setDisplayOptions('form', [
-        'region' => 'hidden',
-      ])
-      ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
-
-    return $fields;
+  if ($entity_type->id() !== 'commerce_store') {
+    return;
   }
+
+  $fields['canadapost_api_settings'] = BaseFieldDefinition::create('string_long')
+    ->setLabel(t('Canada Post API Settings'))
+    ->setDisplayOptions('view', [
+      'region' => 'hidden',
+    ])
+    ->setDisplayOptions('form', [
+      'region' => 'hidden',
+    ])
+    ->setDisplayConfigurable('form', TRUE)
+    ->setDisplayConfigurable('view', TRUE);
+
+  return $fields;
 }
 
 /**
  * Implements hook_form_BASE_FORM_ID_alter().
  */
-function commerce_canadapost_form_commerce_store_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+function commerce_canadapost_form_commerce_store_form_alter(
+  &$form,
+  FormStateInterface $form_state,
+  $form_id
+) {
   /** @var \Drupal\commerce_store\Entity\StoreInterface $store */
   $store = $form_state->getFormObject()->getEntity();
 
@@ -175,14 +181,14 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
   $form_values = $form_state->getValues();
 
   // If the user has opted to create Canada Post API settings for this store.
-  if ($form_values['use_sitewide_settings'] == FALSE) {
+  if (!$form_values['use_shipping_method_settings']) {
     $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
 
     $json_encoded_settings = $utilities_service->encodeSettings($form_values);
     $store->set('canadapost_api_settings', $json_encoded_settings);
   }
-  // Else, we empty the store settings so that the sitewide settings will be
-  // used instead.
+  // Else, we empty the store settings so that the shipping method settings will
+  // be used instead.
   else {
     $store->set('canadapost_api_settings', NULL);
   }
