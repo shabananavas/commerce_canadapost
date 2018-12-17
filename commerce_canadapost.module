@@ -181,17 +181,10 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
   $form_values = $form_state->getValues();
 
   // If the user has opted to create Canada Post API settings for this store.
-  if (!$form_values['use_shipping_method_settings']) {
-    $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
 
-    $json_encoded_settings = $utilities_service->encodeSettings($form_values);
-    $store->set('canadapost_api_settings', $json_encoded_settings);
-  }
-  // Else, we empty the store settings so that the shipping method settings will
-  // be used instead.
-  else {
-    $store->set('canadapost_api_settings', NULL);
-  }
+  $json_encoded_settings = $utilities_service->encodeSettings($form_values);
+  $store->set('canadapost_api_settings', $json_encoded_settings);
 
   $store->save();
 }

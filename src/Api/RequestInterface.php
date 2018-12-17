@@ -13,7 +13,7 @@ use Drupal\commerce_store\Entity\StoreInterface;
 interface RequestInterface {
 
   /**
-   * Fetch the Canada Post API settings, first from the store then the method.
+   * Fetch the Canada Post API settings, first from the method, then, the store.
    *
    * @param \Drupal\commerce_store\Entity\StoreInterface $store
    *   A store entity, if the api settings are for a store.

@@ -33,7 +33,7 @@ class CanadaPostApiSettingsTest extends CanadaPostUnitTestBase {
   public function testStoreApiSettingsReturned() {
     // Set the API settings passing a store entity.
     $utilities = new UtilitiesService();
-    $api_settings = $utilities->getApiSettings($this->shipment->getOrder()->getStore(), $this->shippingMethod);
+    $api_settings = $utilities->getApiSettings($this->shipment->getOrder()->getStore());
 
     // Now, test that we are returned back the store API settings.
     $this->assertEquals('store_mock_cn', $api_settings['customer_number']);

@@ -38,15 +38,15 @@ abstract class Request implements RequestInterface {
       throw new Exception('A shipping method or a store is required to fetch the Canada Post API settings.');
     }
 
-    // If we have store specific settings, return that.
-    if ($store && !empty($store->get('canadapost_api_settings')->getValue()[0]['value'])) {
+    // Check if we have settings set on the shipping method, if so, use that.
+    if ($shipping_method && $shipping_method->apiIsConfigured()) {
+      $api_settings = $shipping_method->getConfiguration()['api'];
+    }
+    // Else, we fallback to the store API settings.
+    elseif ($store) {
       $api_settings = $this->decodeSettings(
         $store->get('canadapost_api_settings')->getValue()[0]['value']
       );
-    }
-    // Else, we fetch it from the shipping method if it exists.
-    elseif ($shipping_method) {
-      $api_settings = $shipping_method->getConfiguration()['api'];
     }
 
     return $api_settings;

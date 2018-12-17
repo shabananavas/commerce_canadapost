@@ -46,22 +46,18 @@ class UtilitiesService extends Request {
 
     // Display an option to use the shipping method settings or have specific
     // settings for this store.
-    if ($store) {
-      $store_settings_set = empty($store->get('canadapost_api_settings')
-        ->getValue()[0]['value']);
-
-      $form['api']['use_shipping_method_settings'] = [
+    if (!$store) {
+      $form['api']['use_store_settings'] = [
         '#type' => 'checkbox',
-        '#title' => $this->t('Use Canada Post shipping method API settings'),
+        '#title' => $this->t('Use Canada Post store API settings'),
         '#description' => $this->t('The Canada Post @url will be used when fetching rates and tracking details.
-          <br \><strong>Uncheck</strong> this box if you\'d like to use a different account when fetching rates and tracking details for orders from this store.', [
+          <br \><strong>Uncheck</strong> this box if you\'d like to use a different account when fetching rates and tracking details for this shipping method.', [
             '@url' => Link::fromTextAndUrl(
-              $this->t('shipping method API settings'),
-              Url::fromRoute('entity.commerce_shipping_method.collection')
+              $this->t('API settings attached to the order store'),
+              Url::fromRoute('entity.commerce_store.collection')
             )->toString(),
           ]
         ),
-        '#default_value' => $store_settings_set,
       ];
     }
 
@@ -111,25 +107,6 @@ class UtilitiesService extends Request {
       '#default_value' => $api_settings['log'],
     ];
 
-    // Add a note about store specific settings if we are in the shipping method
-    // page.
-    if (!$store) {
-      $form['api']['note'] = [
-        '#type' => 'item',
-        '#markup' => $this->t('<strong>To configure Canada Post API settings per store, go to the @url, edit the store, and add the account details there.<br \> Store API settings, if set, will be given preference when fetching rate and tracking details.</strong>', [
-          '@url' => Link::fromTextAndUrl(
-            $this->t('store settings page'),
-            Url::fromRoute('entity.commerce_store.collection')
-          )->toString(),
-        ]),
-      ];
-    }
-
-    // Alter the fields if we're in the store form.
-    if ($store) {
-      $this->alterApiFormFields($form);
-    }
-
     return $form;
   }
 
@@ -148,38 +125,6 @@ class UtilitiesService extends Request {
     }
 
     return json_encode($api_settings_values);
-  }
-
-  /**
-   * Alter the Canada Post API settings form fields if we're in the store form.
-   *
-   * @param array $form
-   *   The form array.
-   */
-  protected function alterApiFormFields(array &$form) {
-    // Fields should be visible only if the use_site_settings checkbox is
-    // unchecked.
-    $states = [
-      'visible' => [
-        ':input[name="use_shipping_method_settings"]' => [
-          'checked' => FALSE,
-        ],
-      ],
-      'required' => [
-        ':input[name="use_shipping_method_settings"]' => [
-          'checked' => FALSE,
-        ],
-      ],
-    ];
-    foreach ($this->getApiKeys() as $key) {
-      $form['api'][$key]['#states'] = $states;
-      $form['api'][$key]['#required'] = FALSE;
-    }
-
-    // Contract ID and Log are not required so remove it from the states as
-    // well.
-    unset($form['api']['contract_id']['#states']['required']);
-    unset($form['api']['log']['#states']['required']);
   }
 
 }
