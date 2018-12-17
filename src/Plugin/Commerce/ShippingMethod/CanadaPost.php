@@ -199,7 +199,6 @@ class CanadaPost extends ShippingMethodBase {
       $this,
       $shipment,
       [
-        'debug' => FALSE,
         'option_codes' => $this->configuration['shipping_information']['option_codes'],
         'service_codes' => $this->configuration['services'],
       ]
