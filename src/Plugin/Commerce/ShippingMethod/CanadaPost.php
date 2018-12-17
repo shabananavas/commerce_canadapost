@@ -134,6 +134,10 @@ class CanadaPost extends ShippingMethodBase {
 
     $form += $this->utilities->buildApiForm(NULL, $this);
 
+    // Make fields required only if the use_store_settings checkbox is
+    // unchecked.
+    $this->alterApiFormFields($form);
+
     $form['shipping_information'] = [
       '#type' => 'details',
       '#title' => $this->t('Shipping rate modifications'),
@@ -167,12 +171,19 @@ class CanadaPost extends ShippingMethodBase {
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValue($form['#parents']);
 
-    $this->configuration['api']['customer_number'] = $values['api']['customer_number'];
-    $this->configuration['api']['username'] = $values['api']['username'];
-    $this->configuration['api']['password'] = $values['api']['password'];
-    $this->configuration['api']['contract_id'] = $values['api']['contract_id'];
-    $this->configuration['api']['mode'] = $values['api']['mode'];
-    $this->configuration['api']['log'] = $values['api']['log'];
+    // Save the API settings.
+    foreach ($this->utilities->getApiKeys() as $key) {
+      // If the user has NOT opted to create settings for this shipping method,
+      // we empty out the settings.
+      if ($values['api']['use_store_settings'] == TRUE) {
+        $this->configuration['api'][$key] = NULL;
+      }
+      // Else, we save the settings.
+      else {
+        $this->configuration['api'][$key] = $values['api'][$key];
+      }
+    }
+
     $this->configuration['shipping_information']['origin_postal_code'] = $values['shipping_information']['origin_postal_code'];
     // Remove the empty options codes.
     $this->configuration['shipping_information']['option_codes'] = array_diff($values['shipping_information']['option_codes'], ['0']);
@@ -212,7 +223,7 @@ class CanadaPost extends ShippingMethodBase {
    * @return bool
    *   TRUE if there is enough information to connect, FALSE otherwise.
    */
-  protected function apiIsConfigured() {
+  public function apiIsConfigured() {
     $api_information = $this->configuration['api'];
 
     return (
@@ -221,6 +232,41 @@ class CanadaPost extends ShippingMethodBase {
       && !empty($api_information['customer_number'])
       && !empty($api_information['mode'])
     );
+  }
+
+  /**
+   * Alter the Canada Post API settings form fields.
+   *
+   * @param array $form
+   *   The form array.
+   */
+  protected function alterApiFormFields(array &$form) {
+    // Fields should be visible only if the use_store_settings checkbox is
+    // unchecked.
+    $states = [
+      'visible' => [
+        ':input[name="plugin[0][target_plugin_configuration][canadapost][api][use_store_settings]"]' => [
+          'checked' => FALSE,
+        ],
+      ],
+      'required' => [
+        ':input[name="plugin[0][target_plugin_configuration][canadapost][api][use_store_settings]"]' => [
+          'checked' => FALSE,
+        ],
+      ],
+    ];
+    foreach ($this->utilities->getApiKeys() as $key) {
+      $form['api'][$key]['#states'] = $states;
+      $form['api'][$key]['#required'] = FALSE;
+    }
+
+    // Contract ID and Log are not required so remove it from the states as
+    // well.
+    unset($form['api']['contract_id']['#states']['required']);
+    unset($form['api']['log']['#states']['required']);
+
+    // Set the default value for the checkbox.
+    $form['api']['use_store_settings']['#default_value'] = !$this->apiIsConfigured();
   }
 
 }

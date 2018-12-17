@@ -125,6 +125,7 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
     $package_type->getWidth()->willReturn(new Length(3, 'in'));
     $package_type->getWeight()->willReturn(new Weight(10, 'lb'));
     $package_type->getRemoteId()->willReturn('custom');
+    $shipping_method->apiIsConfigured()->willReturn(TRUE);
     $shipping_method->getDefaultPackageType()->willReturn($package_type);
     $shipping_method->getConfiguration()->willReturn([
       'api' => $this->getShipmentMethodApiSettings(),
