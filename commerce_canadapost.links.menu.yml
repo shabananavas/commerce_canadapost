@@ -1,5 +1,0 @@
-commerce_canadapost.settings_form:
-  title: 'Canada Post settings'
-  description: 'Manage settings related to Canada Post integration.'
-  parent: commerce_shipping.configuration
-  route_name: commerce_canadapost.settings_form

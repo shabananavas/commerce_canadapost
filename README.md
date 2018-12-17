@@ -14,7 +14,7 @@ Provides Canada Post shipping rates and tracking functionality for Drupal Commer
   - Select 'Canada Post' as the Plugin
   - Select a default package type
   - Select all the shipping services that should be enabled
-  - Click on the Canada Post API settings link under 'API Authentication'
+  - Click on 'API Authentication'
     - Enter the customer number, username, password and other optional config and save configuration.
 
 ## Updating Tracking Information
