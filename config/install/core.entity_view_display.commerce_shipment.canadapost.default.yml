@@ -3,10 +3,11 @@ status: true
 dependencies:
   config:
     - commerce_shipping.commerce_shipment_type.canadapost
-    - field.field.commerce_shipment.canadapost.field_actual_delivery
-    - field.field.commerce_shipment.canadapost.field_attempted_delivery
-    - field.field.commerce_shipment.canadapost.field_expected_delivery
-    - field.field.commerce_shipment.canadapost.field_mailed_on
+    - field.field.commerce_shipment.canadapost.canadapost_actual_delivery
+    - field.field.commerce_shipment.canadapost.canadapost_attempted_delivery
+    - field.field.commerce_shipment.canadapost.canadapost_current_location
+    - field.field.commerce_shipment.canadapost.canadapost_expected_delivery
+    - field.field.commerce_shipment.canadapost.canadapost_mailed_on
   module:
     - commerce_shipping
     - datetime
@@ -16,7 +17,7 @@ targetEntityType: commerce_shipment
 bundle: canadapost
 mode: default
 content:
-  field_actual_delivery:
+  canadapost_actual_delivery:
     weight: 13
     label: above
     settings:
@@ -25,7 +26,7 @@ content:
     third_party_settings: {  }
     type: datetime_default
     region: content
-  field_attempted_delivery:
+  canadapost_attempted_delivery:
     weight: 14
     label: above
     settings:
@@ -34,7 +35,15 @@ content:
     third_party_settings: {  }
     type: datetime_default
     region: content
-  field_expected_delivery:
+  canadapost_current_location:
+    weight: 15
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    type: string
+    region: content
+  canadapost_expected_delivery:
     weight: 12
     label: above
     settings:
@@ -43,7 +52,7 @@ content:
     third_party_settings: {  }
     type: datetime_default
     region: content
-  field_mailed_on:
+  canadapost_mailed_on:
     weight: 11
     label: above
     settings:

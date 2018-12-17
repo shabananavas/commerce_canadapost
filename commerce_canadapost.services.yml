@@ -7,3 +7,6 @@ services:
 
   commerce_canadapost.utilities_service:
     class: Drupal\commerce_canadapost\UtilitiesService
+    arguments:
+      - '@commerce_canadapost.tracking_api'
+      - '@entity_type.manager'

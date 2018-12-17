@@ -3,6 +3,7 @@
 namespace Drupal\commerce_canadapost\Api;
 
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
+use Drupal\commerce_shipping\Entity\ShippingMethodInterface;
 
 use CanadaPost\Exception\ClientException;
 use CanadaPost\Tracking;
@@ -19,6 +20,9 @@ class TrackingService extends Request implements TrackingServiceInterface {
     // Fetch the Canada Post API settings first.
     $store = $shipment->getOrder()->getStore();
     $shipping_method = $shipment->getShippingMethod();
+    if ($shipping_method instanceof ShippingMethodInterface) {
+      $shipping_method = $shipping_method->getPlugin();
+    }
     $api_settings = $this->getApiSettings($store, $shipping_method);
 
     try {

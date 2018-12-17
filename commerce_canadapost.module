@@ -40,17 +40,20 @@ function commerce_canadapost_help($route_name, RouteMatchInterface $route_match)
       $output .= '<dt>' . t('3. Enter the Canada Post API details') . '</dt>';
       $output .= '<dt>' . t('4. Select a default package type') . '</dt>';
       $output .= '<dt>' . t('5. Select all the shipping services that should be enabled') . '</dt>';
-      $output .= '<dt>' . t('6. Click on \'API Authentication\' and add your customer number, username, password and other optional config and save configuration') . '</dt>';
-      $output .= '<dt>' . t('7. Add a product to cart and checkout') . '</dt>';
-      $output .= '<dt>' . t('8. Enter your shipping address and click on \'Calculate Shipping\'') . '</dt>';
-      $output .= '<dt>' . t('9. The estimated rates retrieved from Canada Post will now show up for the order') . '</dt>';
+      $output .= '<dt>' . t('6. Click on \'API Authentication\' and add your customer number, username, password and other optional config and save configuration.') . '</dt>';
+      $output .= '<dt>' . t('7. Go to /admin/commerce/config/order-types/{COMMERCE_ORDER_TYPE}/edit and select \'Canada Post\' for the Shipment type and save.') . '</dt>';
+      $output .= '<h3>' . t('Fetching Rates') . '</h3>';
+      $output .= '<dt>' . t('1. Add a product to cart and checkout') . '</dt>';
+      $output .= '<dt>' . t('2. Enter your shipping address and click on \'Calculate Shipping\'') . '</dt>';
+      $output .= '<dt>' . t('3. The estimated rates retrieved from Canada Post will now show up for the order.') . '</dt>';
       $output .= '<h3>' . t('Updating Tracking Information') . '</h3>';
       $output .= '<p>' . t('Tracking summary for each shipment on an order can be seen in the order view page.') . '</p>';
       $output .= '<p>' . t('To add the tracking code received from Canada Post to a shipment:') . '</p>';
       $output .= '<dt>' . t('1. Go to /admin/commerce/orders/{COMMERCE_ORDER_ID}/shipments') . '</dt>';
       $output .= '<dt>' . t('2. Click on the \'Edit\' button under the appropriate shipment') . '</dt>';
       $output .= '<dt>' . t('3. Enter the tracking code received from Canada Post in the \'Tracking code\' field and save') . '</dt>';
-      $output .= '<p>' . t('Once a shipment is updated with a tracking code, tracking summary is automatically updated via cron. It can also be done via the drush command: `drush cc-uptracking`.') . '</p>';
+      $output .= '<p>' . t('Once a tracking code is added to a shipment, tracking summary is automatically updated when the shipment form is saved and also via cron.
+       <br>It can also be done manually via the drush command: <code>drush cc-uptracking</code>.') . '</p>';
 
       return $output;
   }
@@ -59,7 +62,7 @@ function commerce_canadapost_help($route_name, RouteMatchInterface $route_match)
 /**
  * Implements hook_form_FORM_ID_alter().
  */
-function commerce_canadapost_form_commerce_shipment_canadapost_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+function commerce_canadapost_form_commerce_shipment_canadapost_edit_form_alter(&$form, FormStateInterface $form_state, $form_id) {
   array_unshift($form['actions']['submit']['#submit'], 'commerce_canadapost_commerce_shipment_form_submit');
 }
 
@@ -71,19 +74,20 @@ function commerce_canadapost_form_commerce_checkout_flow_multistep_default_alter
     return;
   }
 
-  foreach ($form['shipping_information']['shipments'] as &$shipment) {
-    $fields = [
-      'field_actual_delivery',
-      'field_attempted_delivery',
-      'field_expected_delivery',
-      'field_mailed_on',
-    ];
-    foreach ($fields as $field) {
-      if (isset($shipment[$field])) {
-        $shipment[$field]['#access'] = FALSE;
-      }
-    }
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $utilities_service->hideTrackingFields($form);
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function commerce_canadapost_form_commerce_checkout_flow_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if (!isset($form['shipping_information']['shipments'])) {
+    return;
   }
+
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $utilities_service->hideTrackingFields($form);
 }
 
 /**
@@ -127,6 +131,16 @@ function commerce_canadapost_form_commerce_store_form_alter(
 }
 
 /**
+ * Implements hook_cron().
+ */
+function commerce_canadapost_cron() {
+  // Update tracking data for all incomplete canadapost shipments with a
+  // tracking code.
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $utilities_service->updateTracking();
+}
+
+/**
  * Functions.
  */
 
@@ -150,25 +164,45 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
   $tracking_service = \Drupal::service('commerce_canadapost.tracking_api');
   $tracking_summary = $tracking_service->fetchTrackingSummary($submitted_tracking_pin, $shipment);
 
-  $values = [];
-  if (!empty($tracking_summary['actual-delivery-date'])) {
-    $values['field_actual_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['actual-delivery-date']);
+  // Update the tracking fields with the summary.
+  if ($tracking_summary['actual-delivery-date'] != '') {
+    $form_state->setValue('canadapost_actual_delivery', [
+      0 => [
+        'value' => new DrupalDateTime($tracking_summary['actual-delivery-date'])
+      ]
+    ]);
+  }
+  if ($tracking_summary['attempted-date'] != '') {
+    $form_state->setValue('canadapost_attempted_delivery', [
+      0 => [
+        'value' => new DrupalDateTime($tracking_summary['attempted-date'])
+      ]
+    ]);
   }
 
-  if (!empty($tracking_summary['attempted-date'])) {
-    $values['field_attempted_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['attempted-date']);
+  if ($tracking_summary['expected-delivery-date'] != '') {
+    $form_state->setValue('canadapost_expected_delivery', [
+      0 => [
+        'value' => new DrupalDateTime($tracking_summary['expected-delivery-date'])
+      ]
+    ]);
   }
 
-  if (!empty($tracking_summary['expected-delivery-date'])) {
-    $values['field_expected_delivery'][0]['value'] = new DrupalDateTime($tracking_summary['expected-delivery-date']);
+  if ($tracking_summary['mailed-on-date'] != '') {
+    $form_state->setValue('canadapost_mailed_on', [
+      0 => [
+        'value' => new DrupalDateTime($tracking_summary['mailed-on-date'])
+      ]
+    ]);
   }
 
-  if (!empty($tracking_summary['mailed-on-date'])) {
-    $values['field_mailed_on'][0]['value'] = new DrupalDateTime($tracking_summary['mailed-on-date']);
+  if ($tracking_summary['event-location'] != '') {
+    $form_state->setValue('canadapost_current_location', [
+      0 => [
+        'value' => $tracking_summary['event-location']
+      ]
+    ]);
   }
-
-  $form_state->setValues($values);
-  $shipment->set('tracking_code', $submitted_tracking_pin);
 }
 
 /**
