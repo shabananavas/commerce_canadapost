@@ -36,7 +36,6 @@ function commerce_canadapost_update_8001() {
   }
 }
 
-
 /**
  * Copy Canada Post API sitewide settings to all existing store entities.
  */
