@@ -44,20 +44,18 @@ class UtilitiesService extends Request {
       '#open' => TRUE,
     ];
 
-    // Display an option to use the shipping method settings or have specific
-    // settings for this store.
+    // Display an option to use the store settings or have specific settings for
+    // this shipping method.
     if (!$store) {
-      $form['api']['use_store_settings'] = [
+      $form['api']['override_store_settings'] = [
         '#type' => 'checkbox',
-        '#title' => $this->t('Use Canada Post store API settings'),
-        '#description' => $this->t('The Canada Post @url will be used when fetching rates and tracking details.
-          <br \><strong>Uncheck</strong> this box if you\'d like to use a different account when fetching rates and tracking details for this shipping method.', [
-            '@url' => Link::fromTextAndUrl(
-              $this->t('API settings attached to the order store'),
-              Url::fromRoute('entity.commerce_store.collection')
-            )->toString(),
-          ]
-        ),
+        '#title' => $this->t('Override Canada Post store API settings'),
+        '#description' => $this->t('Leave this box unchecked if you\'d like to use @url when fetching rates and tracking details.', [
+          '@url' => Link::fromTextAndUrl(
+            $this->t('the store API settings'),
+            Url::fromRoute('entity.commerce_store.collection')
+          )->toString(),
+        ]),
       ];
     }
 

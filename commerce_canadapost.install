@@ -31,3 +31,36 @@ function commerce_canadapost_update_8001() {
     $config->save();
   }
 }
+
+/**
+ * Copy Canada Post API sitewide settings to all existing store entities.
+ */
+function commerce_canadapost_update_8002() {
+  $config_factory = \Drupal::configFactory();
+
+  // Fetch the Canada Post API sitewide settings.
+  $config_id = 'commerce_canadapost.settings';
+  $config = $config_factory->get($config_id);
+
+  /** @var \Drupal\commerce_canadapost\UtilitiesService $utilities_service */
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+  $values = [];
+  foreach ($utilities_service->getApiKeys() as $key) {
+    $values[$key] = $config->get("api.$key");
+  }
+
+  // Grab all existing stores.
+  $stores = \Drupal::entityTypeManager()
+    ->getStorage('commerce_store')
+    ->loadMultiple(NULL);
+
+  // Save the settings to the store.
+  foreach ($stores as $store) {
+    $store->set('canadapost_api_settings', json_encode($values));
+    $store->save();
+  }
+
+  // Finally, delete the sitewide settings config.
+  $config = $config_factory->getEditable($config_id);
+  $config->delete();
+}
