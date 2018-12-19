@@ -3,6 +3,7 @@
 namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\PackageType\PackageTypeInterface;
@@ -59,8 +60,18 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
       ->willReturn($logger->reveal());
     $logger_factory = $logger_factory->reveal();
 
+    $utilities = $this->prophesize(UtilitiesService::class);
+    $utilities
+      ->getApiSettings(
+        $this->shipment->getOrder()->getStore(),
+        $this->shippingMethod
+      )
+      ->willReturn([]);
+    $utilities = $utilities->reveal();
+
     $container = new ContainerBuilder();
     $container->set('logger.factory', $logger_factory);
+    $container->set('commerce_canadapost.utilities_service', $utilities);
     \Drupal::setContainer($container);
   }
 

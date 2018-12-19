@@ -52,11 +52,12 @@ function commerce_canadapost_update_8002() {
   // Grab all existing stores.
   $stores = \Drupal::entityTypeManager()
     ->getStorage('commerce_store')
-    ->loadMultiple(NULL);
+    ->loadMultiple();
 
   // Save the settings to the store.
   foreach ($stores as $store) {
-    $store->set('canadapost_api_settings', json_encode($values));
+    $json_encoded_settings = $utilities_service->encodeSettings($values);
+    $store->set('canadapost_api_settings', $json_encoded_settings);
     $store->save();
   }
 

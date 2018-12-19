@@ -10,7 +10,7 @@ use Drupal\commerce_store\Entity\StoreInterface;
  *
  * @package Drupal\commerce_canadapost
  */
-interface RequestInterface {
+interface RequestServiceInterface {
 
   /**
    * Fetch the Canada Post API settings, first from the method, then, the store.
@@ -37,13 +37,5 @@ interface RequestInterface {
    *   The Canada Post request service object.
    */
   public function getRequestConfig(array $api_settings);
-
-  /**
-   * Return the Canada Post API keys.
-   *
-   * @return array
-   *   An array of API setting keys.
-   */
-  public function getApiKeys();
 
 }

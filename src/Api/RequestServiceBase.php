@@ -12,7 +12,7 @@ use Exception;
  *
  * @package Drupal\commerce_canadapost
  */
-abstract class Request implements RequestInterface {
+abstract class RequestServiceBase implements RequestServiceInterface {
 
   /**
    * The logger channel factory.
@@ -22,34 +22,28 @@ abstract class Request implements RequestInterface {
   protected $logger;
 
   /**
-   * Request class constructor.
+   * The utilities service class.
+   *
+   * @var \Drupal\commerce_canadapost\UtilitiesService
+   */
+  protected $utilities;
+
+  /**
+   * RequestServiceBase class constructor.
    */
   public function __construct() {
     $this->logger = \Drupal::service('logger.factory')->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
+    $this->utilities = \Drupal::service('commerce_canadapost.utilities_service');
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getApiSettings(StoreInterface $store = NULL, CanadaPost $shipping_method = NULL) {
-    $api_settings = [];
-
-    if (!$store && !$shipping_method) {
-      throw new Exception('A shipping method or a store is required to fetch the Canada Post API settings.');
-    }
-
-    // Check if we have settings set on the shipping method, if so, use that.
-    if ($shipping_method && $shipping_method->apiIsConfigured()) {
-      $api_settings = $shipping_method->getConfiguration()['api'];
-    }
-    // Else, we fallback to the store API settings.
-    elseif ($store) {
-      $api_settings = $this->decodeSettings(
-        $store->get('canadapost_api_settings')->getValue()[0]['value']
-      );
-    }
-
-    return $api_settings;
+  public function getApiSettings(
+    StoreInterface $store = NULL,
+    CanadaPost $shipping_method = NULL
+  ) {
+    return $this->utilities->getApiSettings($store, $shipping_method);
   }
 
   /**
@@ -75,20 +69,6 @@ abstract class Request implements RequestInterface {
   }
 
   /**
-   * {@inheritdoc}
-   */
-  public function getApiKeys() {
-    return [
-      'customer_number',
-      'username',
-      'password',
-      'contract_id',
-      'mode',
-      'log',
-    ];
-  }
-
-  /**
    * Convert the environment mode to the correct format for the SDK.
    *
    * @param array $api_settings
@@ -99,19 +79,6 @@ abstract class Request implements RequestInterface {
    */
   protected function getEnvironmentMode(array $api_settings) {
     return $api_settings['mode'] === 'live' ? 'prod' : 'dev';
-  }
-
-  /**
-   * Decode the Canada Post API settings stored as json in the store entity.
-   *
-   * @param object $api_settings
-   *   The json encoded Canada Post api settings.
-   *
-   * @return array
-   *   An array of values extracted from the json object.
-   */
-  protected function decodeSettings($api_settings) {
-    return json_decode($api_settings, TRUE);
   }
 
 }
