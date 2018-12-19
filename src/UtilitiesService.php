@@ -62,8 +62,8 @@ class UtilitiesService {
         ]
       );
 
-      // If the API settings are from the store, set the default value to 1.
-      if ($api_settings && $api_settings['store_settings_set']) {
+      // If the API settings are set on the store, set the default value to 1.
+      if (!empty($store->get('canadapost_api_settings')->getValue()[0]['value'])) {
         $checkbox_default_value = 1;
       }
     }
@@ -78,8 +78,8 @@ class UtilitiesService {
         )->toString(),
       ]);
 
-      // If the API settings are from the method, set the default value to 1.
-      if ($api_settings && $api_settings['shipping_method_settings_set']) {
+      // If the API settings are set on the method, set the default value to 1.
+      if ($shipping_method->apiIsConfigured()) {
         $checkbox_default_value = 1;
       }
     }
@@ -252,19 +252,12 @@ class UtilitiesService {
     // Check if we have settings set on the shipping method, if so, use that.
     if ($shipping_method && $shipping_method->apiIsConfigured()) {
       $api_settings = $shipping_method->getConfiguration()['api'];
-
-      // Add an array value that denotes we got the API settings from the
-      // shipping method.
-      $api_settings['shipping_method_settings_set'] = TRUE;
     }
     // Else, we fallback to the store API settings.
     elseif ($store && !empty($store->get('canadapost_api_settings')->getValue()[0]['value'])) {
       $api_settings = $this->decodeSettings(
         $store->get('canadapost_api_settings')->getValue()[0]['value']
       );
-
-      // Add an array value that denotes we got the API settings from the store.
-      $api_settings['store_settings_set'] = TRUE;
     }
 
     return $api_settings;
