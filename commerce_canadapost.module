@@ -123,6 +123,7 @@ function commerce_canadapost_form_commerce_store_form_alter(
   $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
   $form += $utilities_service->buildApiForm($store);
 
+  $form['#validate'][] = 'commerce_canadapost_form_commerce_store_form_validate';
   $form['actions']['submit']['#submit'][] = 'commerce_canadapost_form_commerce_store_form_submit';
 }
 
@@ -172,6 +173,45 @@ function commerce_canadapost_commerce_shipment_form_submit($form, FormStateInter
 }
 
 /**
+ * Form validate for the commerce_store entity form.
+ */
+function commerce_canadapost_form_commerce_store_form_validate($form, FormStateInterface $form_state) {
+  $form_values = $form_state->getValues();
+
+  // If the store-wide settings are not checked, load all shipping methods that
+  // are available to that store and if there's any without settings, throw a
+  // form error.
+  if ($form_values['commerce_canadapost_store_settings']) {
+    return;
+  }
+
+  $store = $form_state->getFormObject()->getEntity();
+  $shipping_methods = \Drupal::entityTypeManager()
+    ->getStorage('commerce_shipping_method')
+    ->loadByProperties([
+      'stores' => $store->id(),
+    ]);
+
+  foreach ($shipping_methods as $shipping_method) {
+    /** @var \Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost $shipping_method_plugin */
+    $shipping_method_plugin = $shipping_method->getPlugin();
+    if ($shipping_method_plugin->getPluginId() !== 'canadapost') {
+      continue;
+    }
+
+    // If settings are empty, output an error and break out of the loop.
+    if ($shipping_method_plugin->apiIsConfigured()) {
+      continue;
+    }
+
+    $form_state->setErrorByName(
+      'commerce_canadapost_store_settings',
+      t('There are shipping methods that rely on the Canada Post API settings defined here. Please configure the API settings for this store or the shipping methods.')
+    );
+  }
+}
+
+/**
  * Form submit for the commerce_store entity form.
  */
 function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInterface $form_state) {
@@ -183,8 +223,15 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
   // If the user has opted to create Canada Post API settings for this store.
   $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
 
-  $json_encoded_settings = $utilities_service->encodeSettings($form_values);
-  $store->set('canadapost_api_settings', $json_encoded_settings);
+  // If the use store-wide settings checkbox is checked.
+  if ($form_values['commerce_canadapost_store_settings']) {
+    $settings = $utilities_service->encodeSettings($form_values);
+  }
+  // Else, we empty out the store settings.
+  else {
+    $settings = NULL;
+  }
 
+  $store->set('canadapost_api_settings', $settings);
   $store->save();
 }

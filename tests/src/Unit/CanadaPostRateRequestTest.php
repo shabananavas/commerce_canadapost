@@ -22,6 +22,7 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
     // we need to mock the getRequest() function and this is the only way to do
     // so.
     $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
+      ->setConstructorArgs([$this->loggerFactory, $this->utilities])
       ->setMethods(['getRequest'])
       ->getMock();
 
@@ -53,6 +54,7 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
     // we need to mock the getRequest() function and this is the only way to do
     // so.
     $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
+      ->setConstructorArgs([$this->loggerFactory, $this->utilities])
       ->setMethods(['getRequest'])
       ->getMock();
 
@@ -74,6 +76,7 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
     // we need to mock the getRequest() function and this is the only way to do
     // so.
     $rating_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\RatingService')
+      ->setConstructorArgs([$this->loggerFactory, $this->utilities])
       ->setMethods(['getRequest'])
       ->getMock();
 

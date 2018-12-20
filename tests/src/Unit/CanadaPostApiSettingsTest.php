@@ -7,7 +7,7 @@ use Drupal\commerce_canadapost\UtilitiesService;
 /**
  * Class CanadaPostApiSettingsTest.
  *
- * @coversDefaultClass \Drupal\commerce_canadapost\Api\Request
+ * @coversDefaultClass \Drupal\commerce_canadapost\Api\RequestServiceBase
  * @group commerce_canadapost
  */
 class CanadaPostApiSettingsTest extends CanadaPostUnitTestBase {
