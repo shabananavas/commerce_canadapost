@@ -3,6 +3,7 @@
 namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\PackageType\PackageTypeInterface;
@@ -12,7 +13,6 @@ use Drupal\physical\Weight;
 use Drupal\profile\Entity\ProfileInterface;
 use Drupal\text\Plugin\Field\FieldType\TextLongItem;
 
-use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Tests\UnitTestCase;
@@ -45,6 +45,20 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
   protected $shipment;
 
   /**
+   * The logger channel factory.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   */
+  protected $loggerFactory;
+
+  /**
+   * The utilities service class.
+   *
+   * @var \Drupal\commerce_canadapost\UtilitiesService
+   */
+  protected $utilities;
+
+  /**
    * Set up requirements for test.
    */
   public function setUp() {
@@ -57,11 +71,16 @@ abstract class CanadaPostUnitTestBase extends UnitTestCase {
     $logger = $this->prophesize(LoggerChannelInterface::class);
     $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL)
       ->willReturn($logger->reveal());
-    $logger_factory = $logger_factory->reveal();
+    $this->loggerFactory = $logger_factory->reveal();
 
-    $container = new ContainerBuilder();
-    $container->set('logger.factory', $logger_factory);
-    \Drupal::setContainer($container);
+    $utilities = $this->prophesize(UtilitiesService::class);
+    $utilities
+      ->getApiSettings(
+        $this->shipment->getOrder()->getStore(),
+        $this->shippingMethod
+      )
+      ->willReturn([]);
+    $this->utilities = $utilities->reveal();
   }
 
   /**

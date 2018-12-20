@@ -11,7 +11,7 @@ use CanadaPost\Tracking;
 /**
  * Provides the default Tracking API integration services.
  */
-class TrackingService extends Request implements TrackingServiceInterface {
+class TrackingService extends RequestServiceBase implements TrackingServiceInterface {
 
   /**
    * {@inheritdoc}

@@ -117,7 +117,7 @@ class CanadaPost extends ShippingMethodBase {
         'password' => '',
         'contract_id' => '',
         'mode' => 'test',
-        'log' => 'test',
+        'log' => [],
       ],
       'shipping_information' => [
         'origin_postal_code' => '',
@@ -133,10 +133,6 @@ class CanadaPost extends ShippingMethodBase {
     $form = parent::buildConfigurationForm($form, $form_state);
 
     $form += $this->utilities->buildApiForm(NULL, $this);
-
-    // Make fields required only if the override_store_settings checkbox is
-    // checked.
-    $this->alterApiFormFields($form);
 
     $form['shipping_information'] = [
       '#type' => 'details',
@@ -168,13 +164,45 @@ class CanadaPost extends ShippingMethodBase {
   /**
    * {@inheritdoc}
    */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
+    $values = $form_state->getValue($form['#parents']);
+
+    // If the user didn't enter API settings for this method, make sure we have
+    // settings in all the stores that this shipping method is available for.
+    if ($values['commerce_canadapost_api']['commerce_canadapost_store_settings']) {
+      return parent::validateConfigurationForm($form, $form_state);
+    }
+
+    /** @var \Drupal\commerce_shipping\Entity\ShippingMethodInterface $shipping_method */
+    $shipping_method = $form_state->getFormObject()->getEntity();
+    $stores = $shipping_method->getStores();
+
+    foreach ($stores as $store) {
+      // If settings are empty, output an error and break out of the loop.
+      if (!empty($store->get('canadapost_api_settings')->getValue()[0]['value'])) {
+        continue;
+      }
+
+      $form_state->setErrorByName(
+        'plugin][0][target_plugin_configuration][canadapost][commerce_canadapost_api][commerce_canadapost_store_settings',
+        $this->t('There are stores, which this shipping method is available for, that do not have Canada Post API settings defined. Please configure the API settings for these stores or this shipping method.')
+      );
+      break;
+    }
+
+    parent::validateConfigurationForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValue($form['#parents']);
 
-    // Save the API settings if override store settings is checked.
-    if ($values['api']['override_store_settings']) {
+    // Save the API settings if store settings checkbox is checked.
+    if ($values['commerce_canadapost_api']['commerce_canadapost_store_settings']) {
       foreach ($this->utilities->getApiKeys() as $key) {
-        $this->configuration['api'][$key] = $values['api'][$key];
+        $this->configuration['api'][$key] = $values['commerce_canadapost_api']["commerce_canadapost_$key"];
       }
     }
 
@@ -226,41 +254,6 @@ class CanadaPost extends ShippingMethodBase {
         'service_codes' => $this->configuration['services'],
       ]
     );
-  }
-
-  /**
-   * Alter the Canada Post API settings form fields.
-   *
-   * @param array $form
-   *   The form array.
-   */
-  protected function alterApiFormFields(array &$form) {
-    // Fields should be visible only if the override_store_settings checkbox is
-    // checked.
-    $states = [
-      'visible' => [
-        ':input[name="plugin[0][target_plugin_configuration][canadapost][api][override_store_settings]"]' => [
-          'checked' => TRUE,
-        ],
-      ],
-      'required' => [
-        ':input[name="plugin[0][target_plugin_configuration][canadapost][api][override_store_settings]"]' => [
-          'checked' => TRUE,
-        ],
-      ],
-    ];
-    foreach ($this->utilities->getApiKeys() as $key) {
-      $form['api'][$key]['#states'] = $states;
-      $form['api'][$key]['#required'] = FALSE;
-    }
-
-    // Contract ID and Log are not required so remove it from the states as
-    // well.
-    unset($form['api']['contract_id']['#states']['required']);
-    unset($form['api']['log']['#states']['required']);
-
-    // Set the default value for the checkbox.
-    $form['api']['override_store_settings']['#default_value'] = $this->apiIsConfigured();
   }
 
 }

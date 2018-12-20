@@ -14,7 +14,7 @@ use CanadaPost\Rating;
 /**
  * Provides the default Rating API integration services.
  */
-class RatingService extends Request implements RatingServiceInterface {
+class RatingService extends RequestServiceBase implements RatingServiceInterface {
 
   /**
    * {@inheritdoc}
