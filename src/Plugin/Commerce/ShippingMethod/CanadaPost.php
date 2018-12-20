@@ -169,7 +169,7 @@ class CanadaPost extends ShippingMethodBase {
 
     // If the user didn't enter API settings for this method, make sure we have
     // settings in all the stores that this shipping method is available for.
-    if ($values['commerce_canadapost_api']['store_settings']) {
+    if ($values['commerce_canadapost_api']['commerce_canadapost_store_settings']) {
       return parent::validateConfigurationForm($form, $form_state);
     }
 
@@ -184,7 +184,7 @@ class CanadaPost extends ShippingMethodBase {
       }
 
       $form_state->setErrorByName(
-        'plugin][0][target_plugin_configuration][canadapost][commerce_canadapost_api][store_settings',
+        'plugin][0][target_plugin_configuration][canadapost][commerce_canadapost_api][commerce_canadapost_store_settings',
         $this->t('There are stores, which this shipping method is available for, that do not have Canada Post API settings defined. Please configure the API settings for these stores or this shipping method.')
       );
       break;
@@ -200,9 +200,9 @@ class CanadaPost extends ShippingMethodBase {
     $values = $form_state->getValue($form['#parents']);
 
     // Save the API settings if store settings checkbox is checked.
-    if ($values['commerce_canadapost_api']['store_settings']) {
+    if ($values['commerce_canadapost_api']['commerce_canadapost_store_settings']) {
       foreach ($this->utilities->getApiKeys() as $key) {
-        $this->configuration['api'][$key] = $values['commerce_canadapost_api'][$key];
+        $this->configuration['api'][$key] = $values['commerce_canadapost_api']["commerce_canadapost_$key"];
       }
     }
 

@@ -84,37 +84,37 @@ class UtilitiesService {
       }
     }
 
-    $form['commerce_canadapost_api']['store_settings'] = [
+    $form['commerce_canadapost_api']['commerce_canadapost_store_settings'] = [
       '#type' => 'checkbox',
       '#title' => $title,
       '#description' => $description,
       '#default_value' => $checkbox_default_value,
     ];
 
-    $form['commerce_canadapost_api']['customer_number'] = [
+    $form['commerce_canadapost_api']['commerce_canadapost_customer_number'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Customer number'),
       '#default_value' => $api_settings ? $api_settings['customer_number'] : '',
       '#required' => TRUE,
     ];
-    $form['commerce_canadapost_api']['username'] = [
+    $form['commerce_canadapost_api']['commerce_canadapost_username'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Username'),
       '#default_value' => $api_settings ? $api_settings['username'] : '',
       '#required' => TRUE,
     ];
-    $form['commerce_canadapost_api']['password'] = [
+    $form['commerce_canadapost_api']['commerce_canadapost_password'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Password'),
       '#default_value' => $api_settings ? $api_settings['password'] : '',
       '#required' => TRUE,
     ];
-    $form['commerce_canadapost_api']['contract_id'] = [
+    $form['commerce_canadapost_api']['commerce_canadapost_contract_id'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Contract ID'),
       '#default_value' => $api_settings ? $api_settings['contract_id'] : '',
     ];
-    $form['commerce_canadapost_api']['mode'] = [
+    $form['commerce_canadapost_api']['commerce_canadapost_mode'] = [
       '#type' => 'select',
       '#title' => $this->t('Mode'),
       '#default_value' => $api_settings ? $api_settings['mode'] : '',
@@ -124,7 +124,7 @@ class UtilitiesService {
       ],
       '#required' => TRUE,
     ];
-    $form['commerce_canadapost_api']['log'] = [
+    $form['commerce_canadapost_api']['commerce_canadapost_log'] = [
       '#type' => 'checkboxes',
       '#title' => $this->t('Log the following messages for debugging'),
       '#options' => [
@@ -151,9 +151,9 @@ class UtilitiesService {
     // Fields should be visible only if the store_settings checkbox is checked.
     // The input name is different in the shipping method form, so detect where
     // we are and change accordingly.
-    $field_input_name = 'store_settings';
+    $field_input_name = 'commerce_canadapost_store_settings';
     if (!$store) {
-      $field_input_name = 'plugin[0][target_plugin_configuration][canadapost][commerce_canadapost_api][store_settings]';
+      $field_input_name = 'plugin[0][target_plugin_configuration][canadapost][commerce_canadapost_api][commerce_canadapost_store_settings]';
     }
 
     $states = [
@@ -169,14 +169,14 @@ class UtilitiesService {
       ],
     ];
     foreach ($this->getApiKeys() as $key) {
-      $form['commerce_canadapost_api'][$key]['#states'] = $states;
-      $form['commerce_canadapost_api'][$key]['#required'] = FALSE;
+      $form['commerce_canadapost_api']["commerce_canadapost_$key"]['#states'] = $states;
+      $form['commerce_canadapost_api']["commerce_canadapost_$key"]['#required'] = FALSE;
     }
 
     // Contract ID and Log are not required so remove it from the states as
     // well.
-    unset($form['commerce_canadapost_api']['contract_id']['#states']['required']);
-    unset($form['commerce_canadapost_api']['log']['#states']['required']);
+    unset($form['commerce_canadapost_api']['commerce_canadapost_contract_id']['#states']['required']);
+    unset($form['commerce_canadapost_api']['commerce_canadapost_log']['#states']['required']);
   }
 
   /**
@@ -203,7 +203,7 @@ class UtilitiesService {
    */
   public function encodeSettings(array $values) {
     foreach ($this->getApiKeys() as $key) {
-      $api_settings_values[$key] = $values[$key];
+      $api_settings_values[$key] = $values["commerce_canadapost_$key"];
     }
 
     return json_encode($api_settings_values);

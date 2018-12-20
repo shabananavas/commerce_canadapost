@@ -3,7 +3,10 @@
 namespace Drupal\commerce_canadapost\Api;
 
 use Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost;
+use Drupal\commerce_canadapost\UtilitiesService;
 use Drupal\commerce_store\Entity\StoreInterface;
+
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 use Exception;
 
@@ -30,10 +33,18 @@ abstract class RequestServiceBase implements RequestServiceInterface {
 
   /**
    * RequestServiceBase class constructor.
+   *
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   *   The logger factory.
+   * @param \Drupal\commerce_canadapost\UtilitiesService $utilities
+   *   The utilities service class.
    */
-  public function __construct() {
-    $this->logger = \Drupal::service('logger.factory')->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
-    $this->utilities = \Drupal::service('commerce_canadapost.utilities_service');
+  public function __construct(
+    LoggerChannelFactoryInterface $logger_factory,
+    UtilitiesService $utilities
+  ) {
+    $this->logger = $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
+    $this->utilities = $utilities;
   }
 
   /**

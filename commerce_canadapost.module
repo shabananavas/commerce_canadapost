@@ -181,7 +181,7 @@ function commerce_canadapost_form_commerce_store_form_validate($form, FormStateI
   // If the store-wide settings are not checked, load all shipping methods that
   // are available to that store and if there's any without settings, throw a
   // form error.
-  if ($form_values['store_settings']) {
+  if ($form_values['commerce_canadapost_store_settings']) {
     return;
   }
 
@@ -205,7 +205,7 @@ function commerce_canadapost_form_commerce_store_form_validate($form, FormStateI
     }
 
     $form_state->setErrorByName(
-      'store_settings',
+      'commerce_canadapost_store_settings',
       t('There are shipping methods that rely on the Canada Post API settings defined here. Please configure the API settings for this store or the shipping methods.')
     );
   }
@@ -224,7 +224,7 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
   $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
 
   // If the use store-wide settings checkbox is checked.
-  if ($form_values['store_settings']) {
+  if ($form_values['commerce_canadapost_store_settings']) {
     $settings = $utilities_service->encodeSettings($form_values);
   }
   // Else, we empty out the store settings.
