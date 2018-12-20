@@ -1,7 +1,5 @@
 services:
   commerce_canadapost.commands:
     class: \Drupal\commerce_canadapost\Commands\Commands
-    arguments:
-      - '@commerce_canadapost.utilities_service'
     tags:
       - { name: drush.command }

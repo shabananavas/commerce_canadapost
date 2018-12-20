@@ -2,30 +2,12 @@
 
 namespace Drupal\commerce_canadapost\Commands;
 
-use Drupal\commerce_canadapost\UtilitiesService;
 use Drush\Commands\DrushCommands;
 
 /**
  * Drush commands for the Commerce Canada Post module.
  */
 class Commands extends DrushCommands {
-
-  /**
-   * The Canada Post utilities service object.
-   *
-   * @var \Drupal\commerce_canadapost\UtilitiesService
-   */
-  protected $utilities;
-
-  /**
-   * Constructs a new Commands object.
-   *
-   * @param \Drupal\commerce_canadapost\UtilitiesService $utilities
-   *   The Canada Post utilities service object.
-   */
-  public function __construct(UtilitiesService $utilities) {
-    $this->utilities = $utilities;
-  }
 
   /**
    * Fetching tracking summary for shipments and update the tracking data.
@@ -45,7 +27,7 @@ class Commands extends DrushCommands {
     }
 
     // Update the tracking.
-    $updated_order_ids = $this->utilities->updateTracking($order_ids);
+    $updated_order_ids = commerce_canadapost_update_tracking($order_ids);
 
     $this->logger()->success(dt(
       'Updated tracking for the following orders: @order_ids.', [

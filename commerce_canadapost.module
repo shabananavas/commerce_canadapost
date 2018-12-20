@@ -5,6 +5,7 @@
  * Provides functionality for the Commerce Canada Post module.
  */
 
+use Drupal\commerce_canadapost\Api\TrackingService;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -137,8 +138,7 @@ function commerce_canadapost_form_commerce_store_form_alter(
 function commerce_canadapost_cron() {
   // Update tracking data for all incomplete canadapost shipments with a
   // tracking code.
-  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
-  $utilities_service->updateTracking();
+  commerce_canadapost_update_tracking();
 }
 
 /**
@@ -268,4 +268,38 @@ function commerce_canadapost_form_commerce_store_form_submit($form, FormStateInt
 
   $store->set('canadapost_api_settings', $settings);
   $store->save();
+}
+
+/**
+ * Update tracking data for all incomplete Canada Post shipments.
+ *
+ * @param array $order_ids
+ *   An array of order IDs to update the tracking data for. Leave empty to
+ *   update all orders with incomplete shipments.
+ *
+ * @return array
+ *   An array of order IDs for which the shipments were updated for.
+ */
+function commerce_canadapost_update_tracking(array $order_ids = NULL) {
+  $updated_order_ids = [];
+
+  // Fetch shipments for tracking.
+  $utilities_service = \Drupal::service('commerce_canadapost.utilities_service');
+
+  $shipments = $utilities_service->fetchShipmentsForTracking($order_ids);
+  if (!$shipments) {
+    return [];
+  }
+
+  $tracking = \Drupal::service('commerce_canadapost.tracking_api');
+  foreach ($shipments as $shipment) {
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
+    // Fetch tracking summary.
+    $tracking_summary = $tracking->fetchTrackingSummary($shipment->getTrackingCode(), $shipment);
+
+    // Update the shipment fields with the tracking data.
+    $updated_order_ids[] = $utilities_service->updateTrackingFields($shipment, $tracking_summary);
+  }
+
+  return $updated_order_ids;
 }

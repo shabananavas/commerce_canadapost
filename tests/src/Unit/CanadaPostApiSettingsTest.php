@@ -2,8 +2,8 @@
 
 namespace Drupal\Tests\commerce_canadapost\Unit;
 
-use Drupal\commerce_canadapost\Api\TrackingService;
 use Drupal\commerce_canadapost\UtilitiesService;
+
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 
 /**
@@ -27,9 +27,8 @@ class CanadaPostApiSettingsTest extends CanadaPostUnitTestBase {
   public function setUp() {
     parent::setUp();
 
-    $tracking_api = $this->prophesize(TrackingService::class);
     $entity_type_manager = $this->prophesize(EntityTypeManagerInterface::class);
-    $this->utilities = new UtilitiesService($tracking_api->reveal(), $entity_type_manager->reveal());
+    $this->utilities = new UtilitiesService($entity_type_manager->reveal());
   }
 
   /**
