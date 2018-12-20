@@ -6,8 +6,8 @@ dependencies:
   module:
     - commerce_shipping
     - datetime
-id: commerce_shipment.field_mailed_on
-field_name: field_mailed_on
+id: commerce_shipment.canadapost_attempted_delivery
+field_name: canadapost_attempted_delivery
 entity_type: commerce_shipment
 type: datetime
 settings:

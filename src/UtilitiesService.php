@@ -3,8 +3,10 @@
 namespace Drupal\commerce_canadapost;
 
 use Drupal\commerce_canadapost\Plugin\Commerce\ShippingMethod\CanadaPost;
+use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_store\Entity\StoreInterface;
 
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Link;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
@@ -21,6 +23,23 @@ use Exception;
 class UtilitiesService {
 
   use StringTranslationTrait;
+
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
+   * Constructs a UtilitiesService class.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
+   */
+  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
+    $this->entityTypeManager = $entity_type_manager;
+  }
 
   /**
    * Build the form fields for the Canada Post API settings.
@@ -140,46 +159,6 @@ class UtilitiesService {
   }
 
   /**
-   * Alter the Canada Post API settings form fields.
-   *
-   * @param array $form
-   *   The form array.
-   * @param \Drupal\commerce_store\Entity\StoreInterface $store
-   *   A store entity, if the api settings are for a store.
-   */
-  protected function alterApiFormFields(array &$form, StoreInterface $store = NULL) {
-    // Fields should be visible only if the store_settings checkbox is checked.
-    // The input name is different in the shipping method form, so detect where
-    // we are and change accordingly.
-    $field_input_name = 'commerce_canadapost_store_settings';
-    if (!$store) {
-      $field_input_name = 'plugin[0][target_plugin_configuration][canadapost][commerce_canadapost_api][commerce_canadapost_store_settings]';
-    }
-
-    $states = [
-      'visible' => [
-        ':input[name="' . $field_input_name . '"]' => [
-          'checked' => TRUE,
-        ],
-      ],
-      'required' => [
-        ':input[name="' . $field_input_name . '"]' => [
-          'checked' => TRUE,
-        ],
-      ],
-    ];
-    foreach ($this->getApiKeys() as $key) {
-      $form['commerce_canadapost_api']["commerce_canadapost_$key"]['#states'] = $states;
-      $form['commerce_canadapost_api']["commerce_canadapost_$key"]['#required'] = FALSE;
-    }
-
-    // Contract ID and Log are not required so remove it from the states as
-    // well.
-    unset($form['commerce_canadapost_api']['commerce_canadapost_contract_id']['#states']['required']);
-    unset($form['commerce_canadapost_api']['commerce_canadapost_log']['#states']['required']);
-  }
-
-  /**
    * Decode the Canada Post API settings stored as json in the store entity.
    *
    * @param object $api_settings
@@ -207,6 +186,37 @@ class UtilitiesService {
     }
 
     return json_encode($api_settings_values);
+  }
+
+  /**
+   * Fetch all incomplete Canada Post shipments that have a tracking pin.
+   *
+   * @param array $order_ids
+   *   Only fetch shipments of specific order IDs.
+   *
+   * @return array
+   *   An array of shipment entities.
+   */
+  public function fetchShipmentsForTracking(array $order_ids = NULL) {
+    // Query the db for the incomplete shipments.
+    $shipment_query = $this->entityTypeManager
+      ->getStorage('commerce_shipment')
+      ->getQuery();
+    $shipment_query
+      ->condition('type', 'canadapost')
+      ->condition('state', 'completed', '!=')
+      ->condition('tracking_code', NULL, 'IS NOT NULL');
+    // If specific order IDs have been passed.
+    if (!empty($order_ids)) {
+      $shipment_query->condition('order_id', $order_ids, 'IN');
+    }
+    // Fetch the results.
+    $shipment_ids = $shipment_query->execute();
+
+    // Return the loaded shipment entities.
+    return $this->entityTypeManager
+      ->getStorage('commerce_shipment')
+      ->loadMultiple($shipment_ids);
   }
 
   /**
@@ -261,6 +271,112 @@ class UtilitiesService {
     }
 
     return $api_settings;
+  }
+
+  /**
+   * Hide the Canada Post tracking fields from the checkout form.
+   *
+   * @param array $form
+   *   The form array.
+   */
+  public function hideTrackingFields(array &$form) {
+    foreach ($form['shipping_information']['shipments'] as &$shipment) {
+      $fields = [
+        'canadapost_actual_delivery',
+        'canadapost_attempted_delivery',
+        'canadapost_expected_delivery',
+        'canadapost_mailed_on',
+        'canadapost_current_location',
+      ];
+
+      foreach ($fields as $field) {
+        if (!isset($shipment[$field])) {
+          continue;
+        }
+
+        $shipment[$field]['#access'] = FALSE;
+      }
+    }
+  }
+
+  /**
+   * Update the shipment fields with the tracking summary.
+   *
+   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment
+   *   The commerce shipment.
+   * @param array $tracking_summary
+   *   The tracking summary from Canada Post.
+   *
+   * @return int
+   *   The order ID for which the shipment was updated for.
+   */
+  public function updateTrackingFields(ShipmentInterface $shipment, array $tracking_summary) {
+    // Update the fields.
+    if ($tracking_summary['actual-delivery-date'] != '') {
+      $shipment->set('canadapost_actual_delivery', $tracking_summary['actual-delivery-date']);
+    }
+
+    if ($tracking_summary['attempted-date'] != '') {
+      $shipment->set('canadapost_attempted_delivery', $tracking_summary['attempted-date']);
+    }
+
+    if ($tracking_summary['expected-delivery-date'] != '') {
+      $shipment->set('canadapost_expected_delivery', $tracking_summary['expected-delivery-date']);
+    }
+
+    if ($tracking_summary['mailed-on-date'] != '') {
+      $shipment->set('canadapost_mailed_on', $tracking_summary['mailed-on-date']);
+    }
+
+    if ($tracking_summary['event-location'] != '') {
+      $shipment->set('canadapost_current_location', $tracking_summary['event-location']);
+    }
+
+    // Now, save the shipment.
+    $shipment->save();
+
+    // Return the order ID for this updated shipment.
+    return $shipment->getOrderId();
+  }
+
+  /**
+   * Alter the Canada Post API settings form fields.
+   *
+   * @param array $form
+   *   The form array.
+   * @param \Drupal\commerce_store\Entity\StoreInterface $store
+   *   A store entity, if the api settings are for a store.
+   */
+  protected function alterApiFormFields(array &$form, StoreInterface $store = NULL) {
+    // Fields should be visible only if the store_settings checkbox is checked.
+    // The input name is different in the shipping method form, so detect where
+    // we are and change accordingly.
+    $field_input_name = 'commerce_canadapost_store_settings';
+    if (!$store) {
+      $field_input_name = 'plugin[0][target_plugin_configuration][canadapost][commerce_canadapost_api][commerce_canadapost_store_settings]';
+    }
+
+    $states = [
+      'visible' => [
+        ':input[name="' . $field_input_name . '"]' => [
+          'checked' => TRUE,
+        ],
+      ],
+      'required' => [
+        ':input[name="' . $field_input_name . '"]' => [
+          'checked' => TRUE,
+        ],
+      ],
+    ];
+    foreach ($this->getApiKeys() as $key) {
+      $form['commerce_canadapost_api']["commerce_canadapost_$key"]['#states'] = $states;
+      $form['commerce_canadapost_api']["commerce_canadapost_$key"]['#required'] = FALSE;
+    }
+
+    // Contract ID and Log are not required so remove it from the states as
+    // well.
+    unset($form['commerce_canadapost_api']['commerce_canadapost_contract_id']['#states']['required']);
+    unset($form['commerce_canadapost_api']['commerce_canadapost_log']['#states']['required']);
   }
 
 }

@@ -4,6 +4,8 @@ namespace Drupal\Tests\commerce_canadapost\Unit;
 
 use Drupal\commerce_canadapost\UtilitiesService;
 
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+
 /**
  * Class CanadaPostApiSettingsTest.
  *
@@ -13,12 +15,28 @@ use Drupal\commerce_canadapost\UtilitiesService;
 class CanadaPostApiSettingsTest extends CanadaPostUnitTestBase {
 
   /**
+   * The Canada Post utilities service object.
+   *
+   * @var \Drupal\commerce_canadapost\UtilitiesService
+   */
+  protected $utilities;
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    parent::setUp();
+
+    $entity_type_manager = $this->prophesize(EntityTypeManagerInterface::class);
+    $this->utilities = new UtilitiesService($entity_type_manager->reveal());
+  }
+
+  /**
    * ::covers getRequestConfig.
    */
   public function testShippingMethodApiSettingsReturned() {
     // Get the API settings w/o passing a store entity.
-    $utilities = new UtilitiesService();
-    $api_settings = $utilities->getApiSettings(NULL, $this->shippingMethod);
+    $api_settings = $this->utilities->getApiSettings(NULL, $this->shippingMethod);
 
     // Now, test that we are returned back the sitewide API settings.
     $this->assertEquals('shipment_method_mock_cn', $api_settings['customer_number']);
@@ -32,8 +50,7 @@ class CanadaPostApiSettingsTest extends CanadaPostUnitTestBase {
    */
   public function testStoreApiSettingsReturned() {
     // Get the API settings passing a store entity.
-    $utilities = new UtilitiesService();
-    $api_settings = $utilities->getApiSettings($this->shipment->getOrder()->getStore());
+    $api_settings = $this->utilities->getApiSettings($this->shipment->getOrder()->getStore());
 
     // Now, test that we are returned back the store API settings.
     $this->assertEquals('store_mock_cn', $api_settings['customer_number']);
@@ -49,8 +66,7 @@ class CanadaPostApiSettingsTest extends CanadaPostUnitTestBase {
     // Get the API settings passing a store entity and shipping method entity
     // and test that we get back the shipping method settings as that has
     // preference.
-    $utilities = new UtilitiesService();
-    $api_settings = $utilities->getApiSettings($this->shipment->getOrder()->getStore(), $this->shippingMethod);
+    $api_settings = $this->utilities->getApiSettings($this->shipment->getOrder()->getStore(), $this->shippingMethod);
 
     // Now, test that we are returned back the store API settings.
     $this->assertEquals('shipment_method_mock_cn', $api_settings['customer_number']);

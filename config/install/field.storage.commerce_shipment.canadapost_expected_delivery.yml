@@ -6,8 +6,8 @@ dependencies:
   module:
     - commerce_shipping
     - datetime
-id: commerce_shipment.field_expected_delivery
-field_name: field_expected_delivery
+id: commerce_shipment.canadapost_expected_delivery
+field_name: canadapost_expected_delivery
 entity_type: commerce_shipment
 type: datetime
 settings:

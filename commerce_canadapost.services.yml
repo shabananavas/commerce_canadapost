@@ -9,3 +9,5 @@ services:
 
   commerce_canadapost.utilities_service:
     class: Drupal\commerce_canadapost\UtilitiesService
+    arguments:
+      - '@entity_type.manager'

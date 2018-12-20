@@ -2,8 +2,6 @@
 
 namespace Drupal\commerce_canadapost\Commands;
 
-use Drupal\commerce_canadapost\Api\RatingServiceInterface;
-use Drupal\commerce_canadapost\Api\TrackingServiceInterface;
 use Drush\Commands\DrushCommands;
 
 /**
@@ -12,30 +10,30 @@ use Drush\Commands\DrushCommands;
 class Commands extends DrushCommands {
 
   /**
-   * The Tracking API service.
+   * Fetching tracking summary for shipments and update the tracking data.
    *
-   * @var \Drupal\commerce_canadapost\Api\TrackingServiceInterface
+   * @command commerce_canadapost:update_tracking
+   * @aliases cc-uptracking
+   * @option order_ids A comma-separated list of order IDs to update.
+   * @usage commerce_canadapost:update_tracking
+   *   Update tracking for all incomplete orders.
+   * @usage commerce_canadapost:update_tracking --order_ids='1,2,3'
+   *   Update tracking for order IDs 1,2,3.
    */
-  protected $trackingApi;
+  public function updateTracking($options = ['order_ids' => NULL]) {
+    $order_ids = NULL;
+    if (!empty($options['order_ids'])) {
+      $order_ids = explode(',', $options['order_ids']);
+    }
 
-  /**
-   * The Rating API service.
-   *
-   * @var \Drupal\commerce_canadapost\Api\RatingServiceInterface
-   */
-  protected $ratingApi;
+    // Update the tracking.
+    $updated_order_ids = commerce_canadapost_update_tracking($order_ids);
 
-  /**
-   * Constructs a new Commands object.
-   *
-   * @param \Drupal\commerce_canadapost\Api\RatingServiceInterface $service_api
-   *   The Rating API service.
-   * @param \Drupal\commerce_canadapost\Api\TrackingServiceInterface $tracking_api
-   *   The Tracking API service.
-   */
-  public function __construct(RatingServiceInterface $service_api, TrackingServiceInterface $tracking_api) {
-    $this->trackingApi = $tracking_api;
-    $this->ratingApi = $service_api;
+    $this->logger()->success(dt(
+      'Updated tracking for the following orders: @order_ids.', [
+        '@order_ids' => implode(', ', $updated_order_ids),
+      ]
+    ));
   }
 
 }
