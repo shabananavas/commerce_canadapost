@@ -1,7 +1,0 @@
-commerce_canadapost.settings_form:
-  path: '/admin/commerce/config/shipping/canada-post'
-  defaults:
-    _title: 'Canada Post settings'
-    _form: 'Drupal\commerce_canadapost\Form\SettingsForm'
-  requirements:
-    _permission: 'administer commerce_canadapost configuration'

@@ -22,7 +22,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     // we need to mock the getRequest() function and this is the only way to do
     // so.
     $tracking_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\TrackingService')
-      ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
+      ->setConstructorArgs([$this->loggerFactory, $this->utilities])
       ->setMethods(['getRequest'])
       ->getMock();
 
@@ -31,7 +31,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     $tracking_service->method('getRequest')->willReturn($request);
 
     // Now, test that the function has successfully returned rates.
-    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604');
+    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604', $this->shipment);
 
     $this->assertNotNull($tracking_summary);
     $this->assertArrayHasKey('pin', $tracking_summary);
@@ -52,7 +52,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     // we need to mock the getRequest() function and this is the only way to do
     // so.
     $tracking_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\TrackingService')
-      ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
+      ->setConstructorArgs([$this->loggerFactory, $this->utilities])
       ->setMethods(['getRequest'])
       ->getMock();
 
@@ -61,7 +61,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     $tracking_service->method('getRequest')->willReturn($request);
 
     // Now, test that the function has successfully returned rates.
-    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604');
+    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604', $this->shipment);
 
     $this->assertEquals($tracking_summary, []);
   }
@@ -74,7 +74,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     // we need to mock the getRequest() function and this is the only way to do
     // so.
     $tracking_service = $this->getMockBuilder('Drupal\commerce_canadapost\Api\TrackingService')
-      ->setConstructorArgs([$this->configFactory, $this->loggerFactory])
+      ->setConstructorArgs([$this->loggerFactory, $this->utilities])
       ->setMethods(['getRequest'])
       ->getMock();
 
@@ -83,7 +83,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     $tracking_service->method('getRequest')->willReturn($request);
 
     // Now, test that the function has successfully returned rates.
-    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604');
+    $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604', $this->shipment);
 
     $this->assertNull($tracking_summary);
   }

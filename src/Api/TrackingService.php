@@ -2,52 +2,27 @@
 
 namespace Drupal\commerce_canadapost\Api;
 
+use Drupal\commerce_shipping\Entity\ShipmentInterface;
+
 use CanadaPost\Exception\ClientException;
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use CanadaPost\Tracking;
 
 /**
  * Provides the default Tracking API integration services.
  */
-class TrackingService implements TrackingServiceInterface {
-
-  /**
-   * The Canada Post configuration object.
-   *
-   * @var \Drupal\Core\Config\Config
-   */
-  protected $config;
-
-  /**
-   * The logger channel factory.
-   *
-   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
-   */
-  protected $logger;
-
-  /**
-   * Constructs a new TrackingService object.
-   *
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The configuration object factory.
-   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
-   *   The logger channel factory.
-   */
-  public function __construct(
-    ConfigFactoryInterface $config_factory,
-    LoggerChannelFactoryInterface $logger_factory
-  ) {
-    $this->config = $config_factory->get('commerce_canadapost.settings');
-    $this->logger = $logger_factory->get(COMMERCE_CANADAPOST_LOGGER_CHANNEL);
-  }
+class TrackingService extends RequestServiceBase implements TrackingServiceInterface {
 
   /**
    * {@inheritdoc}
    */
-  public function fetchTrackingSummary($tracking_pin) {
+  public function fetchTrackingSummary($tracking_pin, ShipmentInterface $shipment) {
+    // Fetch the Canada Post API settings first.
+    $store = $shipment->getOrder()->getStore();
+    $shipping_method = $shipment->getShippingMethod();
+    $api_settings = $this->getApiSettings($store, $shipping_method);
+
     try {
-      $tracking = $this->getRequest();
+      $tracking = $this->getRequest($api_settings);
       $response = $tracking->getSummary($tracking_pin);
     }
     catch (ClientException $exception) {
@@ -57,6 +32,7 @@ class TrackingService implements TrackingServiceInterface {
         json_encode($exception->getResponseBody())
       );
       $this->logger->error($message);
+
       return;
     }
 
@@ -66,15 +42,14 @@ class TrackingService implements TrackingServiceInterface {
   /**
    * Returns a Canada Post request service api.
    *
+   * @param array $api_settings
+   *   The Canada Post API settings.
+   *
    * @return \CanadaPost\Tracking
    *   The Canada Post tracking request service object.
    */
-  protected function getRequest() {
-    $config = [
-      'username' => $this->config->get('api.username'),
-      'password' => $this->config->get('api.password'),
-      'customer_number' => $this->config->get('api.customer_number'),
-    ];
+  protected function getRequest(array $api_settings) {
+    $config = $this->getRequestConfig($api_settings);
 
     return $tracking = new Tracking($config);
   }
