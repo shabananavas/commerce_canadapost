@@ -85,7 +85,7 @@ class CanadaPostTrackingtTest extends CanadaPostUnitTestBase {
     // Now, test that the function has successfully returned rates.
     $tracking_summary = $tracking_service->fetchTrackingSummary('7023210039414604', $this->shipment);
 
-    $this->assertNull($tracking_summary);
+    $this->assertEquals($tracking_summary, []);
   }
 
   /**

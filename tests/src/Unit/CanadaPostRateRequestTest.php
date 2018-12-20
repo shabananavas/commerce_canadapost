@@ -87,7 +87,7 @@ class CanadaPostRateRequestTest extends CanadaPostUnitTestBase {
     // Now, test that the exception works correctly.
     $rates = $rating_service->getRates($this->shippingMethod, $this->shipment, []);
 
-    $this->assertNull($rates);
+    $this->assertEquals($rates, []);
   }
 
   /**

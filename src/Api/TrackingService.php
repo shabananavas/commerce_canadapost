@@ -22,21 +22,51 @@ class TrackingService extends RequestServiceBase implements TrackingServiceInter
     $api_settings = $this->getApiSettings($store, $shipping_method);
 
     try {
+      // Turn on output buffering if we are in test mode.
+      $test_mode = $api_settings['mode'] === 'test';
+      if ($test_mode) {
+        ob_start();
+      }
+
       $tracking = $this->getRequest($api_settings);
       $response = $tracking->getSummary($tracking_pin);
+
+      if ($api_settings['log']['request']) {
+        $response_output = var_export($response, TRUE);
+        $message = sprintf(
+          'Tracking request made for tracking pin: "%s". Response received: "%s".',
+          $tracking_pin,
+          $response_output
+        );
+        $this->logger->info($message);
+      }
+
+      $response = $this->parseResponse($response);
     }
     catch (ClientException $exception) {
-      $message = sprintf(
-        'An error has been returned by the Canada Post when fetching the tracking summary for the tracking PIN "%s". The error was: "%s"',
-        $tracking_pin,
-        json_encode($exception->getResponseBody())
-      );
-      $this->logger->error($message);
+      if ($api_settings['log']['response']) {
+        $message = sprintf(
+          'An error has been returned by the Canada Post shipment method when fetching the tracking summary for the tracking PIN "%s". The error was: "%s"',
+          $tracking_pin,
+          json_encode($exception->getResponseBody())
+        );
+        $this->logger->error($message);
+      }
 
-      return;
+      $response = [];
     }
 
-    return $this->parseResponse($response);
+    // Log the output buffer if we are in test mode.
+    if ($test_mode) {
+      $output = ob_get_contents();
+      ob_end_clean();
+
+      if (!empty($output)) {
+        $this->logger->info($output);
+      }
+    }
+
+    return $response;
   }
 
   /**
